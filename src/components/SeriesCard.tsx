@@ -1,26 +1,26 @@
 import React from "react";
-import { View, Image, TouchableOpacity } from "react-native";
+import { Image, TouchableOpacity, View } from "react-native";
 import { Text } from "react-native-paper";
-import { Movie } from "../types/Movie";
+import { Series } from "../types/Series";
 import { getCertificationColor } from "../utils/certificationColor";
 
 interface Props {
-  movie: Movie;
+  serie: Series;
 }
 
-export default function MovieCard({ movie }: Props) {
+export default function SeriesCard({ serie }: Props) {
   const poster =
-    "https://image.tmdb.org/t/p/w342" + movie.poster_path?.tmdb;
+    "https://image.tmdb.org/t/p/w342" + serie.poster_path?.tmdb;
 
   return (
     <TouchableOpacity style={{ marginRight: 12, width: 140, paddingBottom: 8 }}>
-      {movie.certification && (
+      {serie.certification && (
         <View
           style={{
             position: "absolute",
             top: 6,
             left: 6,
-            backgroundColor: getCertificationColor(movie?.certification),
+            backgroundColor: getCertificationColor(serie?.certification),
             paddingHorizontal: 6,
             paddingVertical: 2,
             borderRadius: 4,
@@ -31,7 +31,7 @@ export default function MovieCard({ movie }: Props) {
             variant="labelSmall"
             style={{ color: "white", fontWeight: "bold" }}
           >
-            {movie?.certification}
+            {serie?.certification}
           </Text>
         </View>
       )}
@@ -41,16 +41,16 @@ export default function MovieCard({ movie }: Props) {
           width: 140,
           height: 210,
           borderRadius: 8,
-          backgroundColor: "#ddd",
+          backgroundColor: "#ccc",
         }}
       />
       <Text variant="bodySmall" numberOfLines={2} style={{ marginTop: 6 }}>
-        {movie.title}
+        {serie.title}
       </Text>
       <View style={{ flexDirection: "row", alignItems: "center", marginTop: 2 }}>
         {/* Ano */}
         <Text variant="bodySmall" style={{ opacity: 0.8, marginRight: 6 }}>
-          {movie.release_date?.slice(0, 4)}
+          {serie.episode_air_date?.slice(0, 4)}
         </Text>
 
         {/* Ícone da estrela */}
@@ -58,7 +58,7 @@ export default function MovieCard({ movie }: Props) {
 
         {/* Nota */}
         <Text variant="bodySmall" style={{ opacity: 0.8 }}>
-          {Number(movie.rating_tmdb_average).toFixed(1)}
+          {Number(serie.rating_tmdb_average).toFixed(1)}
         </Text>
       </View>
     </TouchableOpacity>

@@ -1,4 +1,4 @@
-export interface Movie {
+export interface Series {
   id: string;
   slug: string;
   title: string;
@@ -10,8 +10,9 @@ export interface Movie {
     tmdb: string | null;
   };
   overview: string;
-  runtime: number;
+  number_of_seasons: number;
+  number_of_episodes: number;
   rating_tmdb_average: string;
-  release_date: string;
+  episode_air_date: string; 
   certification?: string;
 }
