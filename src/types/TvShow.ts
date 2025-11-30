@@ -1,4 +1,4 @@
-export interface Series {
+export interface TvShow {
   id: string;
   slug: string;
   title: string;

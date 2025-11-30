@@ -16,3 +16,13 @@ export function getCertificationColor(certification: string): string {
       return "#6b7280"; // cinza
   }
 }
+
+export function getMediaYear(media: any): string | undefined {
+  if (media.release_date) {
+    return media.release_date?.slice(0, 4);
+  }
+  if (media.episode_air_date) {
+    return media.episode_air_date?.slice(0, 4);
+  }
+  return undefined;
+}

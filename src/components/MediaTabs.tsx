@@ -1,8 +1,13 @@
 import React from "react";
-import { View, ScrollView } from "react-native";
+import { ScrollView } from "react-native";
 import { Text } from "react-native-paper";
-import MovieList from "./MovieList";
-import SeriesList from "./SeriesList";
+import { Movie } from "../types/Movie";
+import { TvShow } from "../types/TvShow";
+import MediaCard from "./MediaCard";
+import MediaList from "./MediaList";
+
+const renderMovieCard = (item: Movie) => <MediaCard media={item} />;
+const renderTvShowCard = (item: TvShow) => <MediaCard media={item} />;
 
 interface Props {
   mediaType: string;
@@ -17,19 +22,22 @@ export default function MediaTabs({ mediaType }: Props) {
             Filmes
           </Text>
 
-          <MovieList
+          <MediaList<Movie>
             title="Em Breve"
             endpoint="https://api.wikinerd.com.br/api/movies/upcoming"
+            renderItem={renderMovieCard}
           />
 
-          <MovieList
+          <MediaList<Movie>
             title="Em Cartaz"
             endpoint="https://api.wikinerd.com.br/api/movies/now-playing"
+            renderItem={renderMovieCard}
           />
 
-          <MovieList
+          <MediaList<Movie>
             title="Mais Avaliados"
             endpoint="https://api.wikinerd.com.br/api/movies/top-rated"
+            renderItem={renderMovieCard}
           />
         </>
       )}
@@ -40,19 +48,22 @@ export default function MediaTabs({ mediaType }: Props) {
             Séries
           </Text>
 
-          <SeriesList
+          <MediaList<TvShow>
             title="Saindo Hoje"
             endpoint="https://api.wikinerd.com.br/api/tv-shows/airing-today"
+            renderItem={renderTvShowCard}
           />
 
-          <SeriesList
+          <MediaList<TvShow>
             title="No Ar"
             endpoint="https://api.wikinerd.com.br/api/tv-shows/on-the-air"
+            renderItem={renderTvShowCard}
           />
 
-          <SeriesList
+          <MediaList<TvShow>
             title="Mais Avaliadas"
             endpoint="https://api.wikinerd.com.br/api/tv-shows/top-rated"
+            renderItem={renderTvShowCard}
           />
         </>
       )}

@@ -1,26 +1,31 @@
 import React from "react";
-import { Image, TouchableOpacity, View } from "react-native";
+import { View, Image, TouchableOpacity } from "react-native";
 import { Text } from "react-native-paper";
-import { Series } from "../types/Series";
-import { getCertificationColor } from "../utils/certificationColor";
+import { Movie } from "../types/Movie";
+import { TvShow } from "../types/TvShow";
+import { getCertificationColor, getMediaYear } from "../utils/helpers";
+
+export type Media = Movie | TvShow;
 
 interface Props {
-  serie: Series;
+  media: Media;
 }
 
-export default function SeriesCard({ serie }: Props) {
+export default function MediaCard({ media }: Props) {
   const poster =
-    "https://image.tmdb.org/t/p/w342" + serie.poster_path?.tmdb;
+    "https://image.tmdb.org/t/p/w342" + media.poster_path?.tmdb;
+
+  const year = getMediaYear(media);
 
   return (
     <TouchableOpacity style={{ marginRight: 12, width: 140, paddingBottom: 8 }}>
-      {serie.certification && (
+      {media.certification && (
         <View
           style={{
             position: "absolute",
             top: 6,
             left: 6,
-            backgroundColor: getCertificationColor(serie?.certification),
+            backgroundColor: getCertificationColor(media?.certification),
             paddingHorizontal: 6,
             paddingVertical: 2,
             borderRadius: 4,
@@ -31,7 +36,7 @@ export default function SeriesCard({ serie }: Props) {
             variant="labelSmall"
             style={{ color: "white", fontWeight: "bold" }}
           >
-            {serie?.certification}
+            {media?.certification}
           </Text>
         </View>
       )}
@@ -45,20 +50,19 @@ export default function SeriesCard({ serie }: Props) {
         }}
       />
       <Text variant="bodySmall" numberOfLines={2} style={{ marginTop: 6 }}>
-        {serie.title}
+        {media.title}
       </Text>
       <View style={{ flexDirection: "row", alignItems: "center", marginTop: 2 }}>
-        {/* Ano */}
-        <Text variant="bodySmall" style={{ opacity: 0.8, marginRight: 6 }}>
-          {serie.episode_air_date?.slice(0, 4)}
-        </Text>
+        {year && (
+          <Text variant="bodySmall" style={{ opacity: 0.8, marginRight: 6 }}>
+            {year}
+          </Text>
+        )}
 
-        {/* Ícone da estrela */}
         <Text style={{ marginRight: 2 }}>⭐</Text>
 
-        {/* Nota */}
         <Text variant="bodySmall" style={{ opacity: 0.8 }}>
-          {Number(serie.rating_tmdb_average).toFixed(1)}
+          {Number(media.rating_tmdb_average).toFixed(1)}
         </Text>
       </View>
     </TouchableOpacity>

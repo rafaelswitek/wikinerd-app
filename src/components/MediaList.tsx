@@ -1,24 +1,27 @@
 import React, { useEffect, useState } from "react";
 import { FlatList, View } from "react-native";
 import { Text, ActivityIndicator } from "react-native-paper";
-import SeriesCard from "./SeriesCard";
 import { api } from "../services/api";
-import { Series } from "../types/Series";
 
-interface Props {
-  title: string;
-  endpoint: string;
+interface CommonItem {
+  id: string;
 }
 
-export default function SeriesList({ title, endpoint }: Props) {
-  const [data, setData] = useState<Series[]>([]);
+interface Props<T extends CommonItem> {
+  title: string;
+  endpoint: string;
+  renderItem: (item: T) => React.ReactElement; 
+}
+
+export default function MediaList<T extends CommonItem>({ title, endpoint, renderItem }: Props<T>) {
+  const [data, setData] = useState<T[]>([]);
   const [loading, setLoading] = useState(true);
 
   const [page, setPage] = useState(1);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(true);
 
-  const fetchSeries = async (pageParam: number) => {
+  const fetchMedia = async (pageParam: number): Promise<T[]> => {
     const response = await api.get(`${endpoint}?page=${pageParam}`);
     return response.data.data;
   };
@@ -29,7 +32,7 @@ export default function SeriesList({ title, endpoint }: Props) {
     setIsLoadingMore(true);
 
     const nextPage = page + 1;
-    const result = await fetchSeries(nextPage);
+    const result = await fetchMedia(nextPage);
 
     if (result.length === 0) {
       setHasMore(false);
@@ -44,17 +47,17 @@ export default function SeriesList({ title, endpoint }: Props) {
   useEffect(() => {
     async function load() {
       try {
-        const result = await fetchSeries(1);
+        const result = await fetchMedia(1);
         setData(result);
       } catch (error) {
-        console.log("Erro ao carregar séries:", error);
+        console.log(`Erro ao carregar ${title}:`, error);
       } finally {
         setLoading(false);
       }
     }
 
     load();
-  }, []);
+  }, [endpoint, title]);
 
   return (
     <View style={{ marginBottom: 24 }}>
@@ -70,11 +73,13 @@ export default function SeriesList({ title, endpoint }: Props) {
           keyExtractor={(item, index) => `${item.id}-${index}`}
           horizontal
           showsHorizontalScrollIndicator={false}
-          renderItem={({ item }) => <SeriesCard serie={item} />}
+          renderItem={({ item }) => renderItem(item)}
           onEndReached={loadMore}
           onEndReachedThreshold={0.4}
           ListFooterComponent={
-            isLoadingMore ? <ActivityIndicator size="small" /> : null
+            isLoadingMore ? (
+              <ActivityIndicator size="small" />
+            ) : null
           }
         />
       )}
