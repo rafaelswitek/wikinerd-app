@@ -3,7 +3,7 @@ import { ScrollView, View, Image, StyleSheet, Dimensions, StatusBar, TouchableOp
 import { Text, ActivityIndicator, Chip, Button, Divider } from "react-native-paper";
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { api } from "../services/api";
-import { Movie, Provider, CrewMember } from "../types/Movie";
+import { CastMember, CrewMember, Movie, Provider } from "../types/Movie";
 import { getCertificationColor, getMediaYear } from "../utils/helpers";
 
 const { width } = Dimensions.get("window");
@@ -12,8 +12,10 @@ export default function MediaDetailsScreen({ route }: any) {
   const { slug } = route.params;
   const [movie, setMovie] = useState<Movie | null>(null);
   const [providers, setProviders] = useState<Provider[]>([]);
+  const [cast, setCast] = useState<CastMember[]>([]);
   const [crew, setCrew] = useState<CrewMember[]>([]);
   const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState<"about" | "cast" | "crew" | "videos" | "reviews">("about");
 
   useEffect(() => {
     async function fetchData() {
@@ -26,8 +28,11 @@ export default function MediaDetailsScreen({ route }: any) {
           const providerRes = await api.get(`https://api.wikinerd.com.br/api/movies/${movieData.id}/providers`);
           setProviders(providerRes.data);
 
-          const creditsRes = await api.get(`https://api.wikinerd.com.br/api/movies/${movieData.id}/credits`);
-          setCrew(creditsRes.data.crew || []);
+          const castRes = await api.get(`https://api.wikinerd.com.br/api/movies/${movieData.id}/cast`);
+          setCast(castRes.data);
+
+          const crewRes = await api.get(`https://api.wikinerd.com.br/api/movies/${movieData.id}/crew`);
+          setCrew(crewRes.data);
         }
       } catch (error) {
         console.error("Erro ao carregar dados:", error);
@@ -68,11 +73,11 @@ export default function MediaDetailsScreen({ route }: any) {
   const providerLabel = streamingProviders.length > 0 ? "Streaming" : "Aluguel / Compra";
 
   const getCrewByJob = (jobs: string[]) => {
-    return crew.filter(c => jobs.includes(c.job)).map(c => c.name).join(", ");
+    return crew.filter(c => jobs.includes(c.job.job)).map(c => c.name).join(", ");
   };
   const photography = getCrewByJob(["Director of Photography", "Cinematography"]);
   const music = getCrewByJob(["Original Music Composer", "Music"]);
-  const producers = crew.filter(c => c.job === "Producer").slice(0, 3).map(c => c.name).join(", ");
+  const producers = crew.filter(c => c.job.job === "Producer").slice(0, 3).map(c => c.name).join(", ");
 
   const formatCurrency = (value?: string) => {
     if (!value || value === "0") return "-";
@@ -90,7 +95,6 @@ export default function MediaDetailsScreen({ route }: any) {
   };
 
   const tmdbScore = Number(movie.rating_tmdb_average);
-  const starScore = (tmdbScore / 2).toFixed(1);
 
   const getSocialData = (platform: string) => {
     switch (platform) {
@@ -107,6 +111,12 @@ export default function MediaDetailsScreen({ route }: any) {
   const collectionImage = movie.collection?.poster_path?.tmdb
     ? `https://image.tmdb.org/t/p/w500${movie.collection.poster_path.tmdb}`
     : null;
+
+  const renderTabButton = (key: typeof activeTab, label: string) => (
+    <TouchableOpacity onPress={() => setActiveTab(key)}>
+      <Text style={activeTab === key ? styles.tabActive : styles.tabInactive}>{label}</Text>
+    </TouchableOpacity>
+  );
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 40 }}>
@@ -161,141 +171,187 @@ export default function MediaDetailsScreen({ route }: any) {
 
       <View style={styles.section}>
         <View style={styles.tabBar}>
-          <Text style={styles.tabActive}>Sobre</Text>
-          <Text style={styles.tabInactive}>Elenco</Text>
-          <Text style={styles.tabInactive}>Vídeos</Text>
-          <Text style={styles.tabInactive}>Reviews</Text>
+          {renderTabButton("about", "Sobre")}
+          {renderTabButton("cast", "Elenco")}
+          {renderTabButton("crew", "Equipe")}
+          {renderTabButton("videos", "Vídeos")}
+          {renderTabButton("reviews", "Reviews")}
         </View>
 
-        <Text style={styles.sectionTitle}>Sinopse</Text>
-        <Text style={styles.bodyText}>{movie.overview}</Text>
-      </View>
+        {activeTab === "about" && (
+          <>
+            <Text style={styles.sectionTitle}>Sinopse</Text>
+            <Text style={styles.bodyText}>{movie.overview}</Text>
 
-      <View style={styles.section}>
-        <View style={styles.providersHeader}>
-          <Text style={styles.sectionTitle}>Onde Assistir</Text>
-          <TouchableOpacity><View style={styles.seeMoreBadge}><Text style={styles.seeMoreText}>Ver opções ▾</Text></View></TouchableOpacity>
-        </View>
-        <Text style={styles.providerSubTitle}>{providerLabel}</Text>
-        <View style={styles.providersGrid}>
-          {displayProviders.length > 0 ? (
-            displayProviders.map((prov) => (
-              <View key={`${prov.id}-${prov.type}`} style={styles.providerItem}>
-                <Image source={{ uri: `https://image.tmdb.org/t/p/w92${prov.logo_path.tmdb}` }} style={styles.providerLogo} />
-                <Text style={styles.providerName} numberOfLines={2}>{prov.name}</Text>
+            <View style={styles.innerSection}>
+              <View style={styles.providersHeader}>
+                <Text style={styles.sectionTitle}>Onde Assistir</Text>
+                <TouchableOpacity><View style={styles.seeMoreBadge}><Text style={styles.seeMoreText}>Ver opções ▾</Text></View></TouchableOpacity>
               </View>
-            ))
-          ) : (<Text style={styles.metaText}>Nenhum serviço encontrado.</Text>)}
-        </View>
-      </View>
-
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Informações Técnicas</Text>
-        <View style={styles.techGrid}>
-          <View style={styles.techItem}><Text style={styles.techLabel}>País de Origem</Text><Text style={styles.techValue}>Estados Unidos</Text></View>
-          <View style={styles.techItem}><Text style={styles.techLabel}>Orçamento</Text><Text style={styles.techValue}>{formatCurrency(movie.budget)}</Text></View>
-          <View style={styles.techItem}><Text style={styles.techLabel}>Bilheteria</Text><Text style={styles.techValue}>{formatCurrency(movie.revenue)}</Text></View>
-          <View style={styles.techItem}><Text style={styles.techLabel}>Status</Text><Text style={styles.techValue}>{movie.status}</Text></View>
-          <View style={styles.techItem}><Text style={styles.techLabel}>Lançamento</Text><Text style={styles.techValue}>{formatDate(movie.release_date)}</Text></View>
-          <View style={styles.techItem}><Text style={styles.techLabel}>Duração</Text><Text style={styles.techValue}>{formatRuntime(movie.runtime)}</Text></View>
-        </View>
-      </View>
-
-      <View style={styles.cardContainer}>
-        <Text style={styles.cardTitle}>Classificação Etária</Text>
-        <View style={styles.contentRow}>
-          <View style={[styles.largeCertBadge, { backgroundColor: movie.certification ? getCertificationColor(movie.certification) : "#666" }]}>
-            <Text style={styles.largeCertText}>{movie.certification || "?"}</Text>
-          </View>
-          <View style={{ flex: 1, marginLeft: 12 }}>
-            <Text style={styles.infoTitle}>ClassInd</Text>
-            <Text style={styles.infoSubtitle}>{movie.certification ? `${movie.certification} anos` : "Não informado"}</Text>
-          </View>
-          <View style={styles.countryBadge}><Text style={styles.countryText}>Brasil</Text></View>
-        </View>
-      </View>
-
-      <View style={styles.cardContainer}>
-        <Text style={styles.cardTitle}>Notas da Crítica</Text>
-        <View style={styles.contentRow}>
-          <View style={[styles.scoreBox, { backgroundColor: tmdbScore >= 7 ? "#22c55e" : tmdbScore >= 5 ? "#eab308" : "#ef4444" }]}>
-            <Text style={styles.scoreText}>{tmdbScore.toFixed(1)}</Text>
-          </View>
-          <View style={{ flex: 1, marginLeft: 12 }}>
-            <Text style={styles.infoTitle}>TMDb</Text>
-            <Text style={styles.infoSubtitle}>{tmdbScore >= 7 ? "Favorável" : "Misto"}</Text>
-          </View>
-          <Icon name="open-in-new" size={20} color="#94a3b8" />
-        </View>
-        <Divider style={styles.divider} />
-        <View style={{ alignItems: 'center' }}>
-          <Text style={styles.infoSubtitle}>Média da Crítica</Text>
-          <Text style={styles.bigScore}>{(tmdbScore / 2).toFixed(1)}/5</Text>
-        </View>
-      </View>
-
-      <View style={styles.cardContainer}>
-        <Text style={styles.cardTitle}>Equipe Técnica</Text>
-        {photography && (<View style={styles.crewRow}><View style={styles.iconCircle}><Icon name="filmstrip" size={20} color="#3b82f6" /></View><View style={styles.crewInfo}><Text style={styles.infoSubtitle}>Fotografia</Text><Text style={styles.infoTitle}>{photography}</Text></View></View>)}
-        {music && (<><Divider style={styles.divider} /><View style={styles.crewRow}><View style={styles.iconCircle}><Icon name="music-note" size={20} color="#3b82f6" /></View><View style={styles.crewInfo}><Text style={styles.infoSubtitle}>Trilha Sonora</Text><Text style={styles.infoTitle}>{music}</Text></View></View></>)}
-        {producers && (<><Divider style={styles.divider} /><View style={styles.crewRow}><View style={styles.iconCircle}><Icon name="account-group" size={20} color="#3b82f6" /></View><View style={styles.crewInfo}><Text style={styles.infoSubtitle}>Produção</Text><Text style={styles.infoTitle}>{producers}</Text></View></View></>)}
-      </View>
-
-      <View style={styles.cardContainer}>
-        <Text style={styles.cardTitle}>Links Externos</Text>
-        {movie.external_ids?.map((item) => {
-          const { icon, color, label, url } = getSocialData(item.platform);
-          return (
-            <TouchableOpacity
-              key={item.platform}
-              style={styles.linkRow}
-              onPress={() => Linking.openURL(`${url}${item.external_id}`)}
-            >
-              <View style={[styles.linkIconBox, { backgroundColor: color }]}>
-                <Icon name={icon} size={16} color="white" />
+              <Text style={styles.providerSubTitle}>{providerLabel}</Text>
+              <View style={styles.providersGrid}>
+                {displayProviders.length > 0 ? (
+                  displayProviders.map((prov) => (
+                    <View key={`${prov.id}-${prov.type}`} style={styles.providerItem}>
+                      <Image source={{ uri: `https://image.tmdb.org/t/p/w92${prov.logo_path.tmdb}` }} style={styles.providerLogo} />
+                      <Text style={styles.providerName} numberOfLines={2}>{prov.name}</Text>
+                    </View>
+                  ))
+                ) : (<Text style={styles.metaText}>Nenhum serviço encontrado.</Text>)}
               </View>
-              <Text style={styles.linkText}>{label}</Text>
-              <Icon name="open-in-new" size={16} color="#94a3b8" />
-            </TouchableOpacity>
-          );
-        })}
+            </View>
+
+            <View style={styles.innerSection}>
+              <Text style={styles.sectionTitle}>Informações Técnicas</Text>
+              <View style={styles.techGrid}>
+                <View style={styles.techItem}><Text style={styles.techLabel}>País de Origem</Text><Text style={styles.techValue}>Estados Unidos</Text></View>
+                <View style={styles.techItem}><Text style={styles.techLabel}>Orçamento</Text><Text style={styles.techValue}>{formatCurrency(movie.budget)}</Text></View>
+                <View style={styles.techItem}><Text style={styles.techLabel}>Bilheteria</Text><Text style={styles.techValue}>{formatCurrency(movie.revenue)}</Text></View>
+                <View style={styles.techItem}><Text style={styles.techLabel}>Status</Text><Text style={styles.techValue}>{movie.status}</Text></View>
+                <View style={styles.techItem}><Text style={styles.techLabel}>Lançamento</Text><Text style={styles.techValue}>{formatDate(movie.release_date)}</Text></View>
+                <View style={styles.techItem}><Text style={styles.techLabel}>Duração</Text><Text style={styles.techValue}>{formatRuntime(movie.runtime)}</Text></View>
+              </View>
+            </View>
+
+            <View style={styles.cardContainer}>
+              <Text style={styles.cardTitle}>Classificação Etária</Text>
+              <View style={styles.contentRow}>
+                <View style={[styles.largeCertBadge, { backgroundColor: movie.certification ? getCertificationColor(movie.certification) : "#666" }]}>
+                  <Text style={styles.largeCertText}>{movie.certification || "?"}</Text>
+                </View>
+                <View style={{ flex: 1, marginLeft: 12 }}>
+                  <Text style={styles.infoTitle}>ClassInd</Text>
+                  <Text style={styles.infoSubtitle}>{movie.certification ? `${movie.certification} anos` : "Não informado"}</Text>
+                </View>
+                <View style={styles.countryBadge}><Text style={styles.countryText}>Brasil</Text></View>
+              </View>
+            </View>
+
+            <View style={styles.cardContainer}>
+              <Text style={styles.cardTitle}>Notas da Crítica</Text>
+              <View style={styles.contentRow}>
+                <View style={[styles.scoreBox, { backgroundColor: tmdbScore >= 7 ? "#22c55e" : tmdbScore >= 5 ? "#eab308" : "#ef4444" }]}>
+                  <Text style={styles.scoreText}>{tmdbScore.toFixed(1)}</Text>
+                </View>
+                <View style={{ flex: 1, marginLeft: 12 }}>
+                  <Text style={styles.infoTitle}>TMDb</Text>
+                  <Text style={styles.infoSubtitle}>{tmdbScore >= 7 ? "Favorável" : "Misto"}</Text>
+                </View>
+                <Icon name="open-in-new" size={20} color="#94a3b8" />
+              </View>
+              <Divider style={styles.divider} />
+              <View style={{ alignItems: 'center' }}>
+                <Text style={styles.infoSubtitle}>Média da Crítica</Text>
+                <Text style={styles.bigScore}>{(tmdbScore / 2).toFixed(1)}/5</Text>
+              </View>
+            </View>
+
+            <View style={styles.cardContainer}>
+              <Text style={styles.cardTitle}>Principais Créditos</Text>
+              {photography && (<View style={styles.crewRow}><View style={styles.iconCircle}><Icon name="filmstrip" size={20} color="#3b82f6" /></View><View style={styles.crewInfo}><Text style={styles.infoSubtitle}>Fotografia</Text><Text style={styles.infoTitle}>{photography}</Text></View></View>)}
+              {music && (<><Divider style={styles.divider} /><View style={styles.crewRow}><View style={styles.iconCircle}><Icon name="music-note" size={20} color="#3b82f6" /></View><View style={styles.crewInfo}><Text style={styles.infoSubtitle}>Trilha Sonora</Text><Text style={styles.infoTitle}>{music}</Text></View></View></>)}
+              {producers && (<><Divider style={styles.divider} /><View style={styles.crewRow}><View style={styles.iconCircle}><Icon name="account-group" size={20} color="#3b82f6" /></View><View style={styles.crewInfo}><Text style={styles.infoSubtitle}>Produção</Text><Text style={styles.infoTitle}>{producers}</Text></View></View></>)}
+            </View>
+
+            <View style={styles.cardContainer}>
+              <Text style={styles.cardTitle}>Links Externos</Text>
+              {movie.external_ids?.map((item) => {
+                const { icon, color, label, url } = getSocialData(item.platform);
+                return (
+                  <TouchableOpacity
+                    key={item.platform}
+                    style={styles.linkRow}
+                    onPress={() => Linking.openURL(`${url}${item.external_id}`)}
+                  >
+                    <View style={[styles.linkIconBox, { backgroundColor: color }]}>
+                      <Icon name={icon} size={16} color="white" />
+                    </View>
+                    <Text style={styles.linkText}>{label}</Text>
+                    <Icon name="open-in-new" size={16} color="#94a3b8" />
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+
+            {movie.collection && (
+              <View style={styles.innerSection}>
+                <View style={styles.providersHeader}>
+                  <Text style={styles.sectionTitle}>Filmes da Coleção</Text>
+                  <TouchableOpacity><View style={styles.iconCircleSmall}><Icon name="menu" size={16} color="#cbd5e1" /></View></TouchableOpacity>
+                </View>
+
+                <View style={styles.collectionContainer}>
+                  <Image
+                    source={{ uri: collectionImage || undefined }}
+                    style={styles.collectionImage}
+                    resizeMode="cover"
+                  />
+                  <View style={styles.collectionOverlay}>
+                    <View style={styles.arrowButton}><Icon name="chevron-left" size={24} color="#64748b" /></View>
+                    <View style={{ flex: 1 }} />
+                    <View style={styles.arrowButton}><Icon name="chevron-right" size={24} color="#e2e8f0" /></View>
+                  </View>
+                  <View style={styles.collectionTitleContainer}>
+                    <Text style={styles.collectionTitleText} numberOfLines={2}>
+                      {movie.collection.name}
+                    </Text>
+                  </View>
+                </View>
+              </View>
+            )}
+
+            {movie.keywords && movie.keywords.length > 0 && (
+              <View style={styles.innerSection}>
+                <Text style={styles.sectionTitle}>Palavras-chave</Text>
+                <View style={styles.keywordContainer}>
+                  {movie.keywords.map(k => (<View key={k.id} style={styles.keywordBadge}><Text style={styles.keywordText}>{k.name}</Text></View>))}
+                </View>
+              </View>
+            )}
+          </>
+        )}
+
+        {activeTab === "cast" && (
+          <View>
+            <Text style={styles.sectionTitle}>Elenco Principal</Text>
+            {cast.map((person) => (
+              <View key={person.id} style={styles.personRow}>
+                <Image
+                  source={{ uri: person.profile_path?.tmdb ? `https://image.tmdb.org/t/p/w185${person.profile_path.tmdb}` : undefined }}
+                  style={styles.avatar}
+                />
+                <View style={styles.personInfo}>
+                  <Text style={styles.personName}>{person.name}</Text>
+                  <Text style={styles.personRole}>{person.character}</Text>
+                </View>
+              </View>
+            ))}
+          </View>
+        )}
+
+        {activeTab === "crew" && (
+          <View>
+            <Text style={styles.sectionTitle}>Equipe Técnica</Text>
+            {crew.map((person) => (
+              <View key={person.id + person.job.job} style={styles.personRow}>
+                <Image
+                  source={{ uri: person.profile_path?.tmdb ? `https://image.tmdb.org/t/p/w185${person.profile_path.tmdb}` : undefined }}
+                  style={styles.avatar}
+                />
+                <View style={styles.personInfo}>
+                  <Text style={styles.personName}>{person.name}</Text>
+                  <Text style={styles.personRole}>{person.job.job}</Text>
+                  <Text style={styles.personDept}>{person.job.department}</Text>
+                </View>
+              </View>
+            ))}
+          </View>
+        )}
+
+        {activeTab === "videos" && <Text style={styles.metaText}>Nenhum vídeo disponível no momento.</Text>}
+        {activeTab === "reviews" && <Text style={styles.metaText}>Nenhuma avaliação disponível no momento.</Text>}
+
       </View>
-
-      {movie.collection && (
-        <View style={styles.section}>
-          <View style={styles.providersHeader}>
-            <Text style={styles.sectionTitle}>Filmes da Coleção</Text>
-            <TouchableOpacity><View style={styles.iconCircleSmall}><Icon name="menu" size={16} color="#cbd5e1" /></View></TouchableOpacity>
-          </View>
-
-          <View style={styles.collectionContainer}>
-            <Image
-              source={{ uri: collectionImage || undefined }}
-              style={styles.collectionImage}
-              resizeMode="cover"
-            />
-            <View style={styles.collectionOverlay}>
-              <View style={styles.arrowButton}><Icon name="chevron-left" size={24} color="#64748b" /></View>
-              <View style={{ flex: 1 }} />
-              <View style={styles.arrowButton}><Icon name="chevron-right" size={24} color="#e2e8f0" /></View>
-            </View>
-            <View style={styles.collectionTitleContainer}>
-              <Text style={styles.collectionTitleText} numberOfLines={2}>
-                {movie.collection.name}
-              </Text>
-            </View>
-          </View>
-        </View>
-      )}
-
-      {movie.keywords && movie.keywords.length > 0 && (
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Palavras-chave</Text>
-          <View style={styles.keywordContainer}>
-            {movie.keywords.map(k => (<View key={k.id} style={styles.keywordBadge}><Text style={styles.keywordText}>{k.name}</Text></View>))}
-          </View>
-        </View>
-      )}
     </ScrollView>
   );
 }
@@ -328,10 +384,11 @@ const styles = StyleSheet.create({
   genresContainer: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, paddingHorizontal: 16, marginTop: 16 },
   genreChip: { backgroundColor: '#1e293b', height: 32 },
   section: { padding: 16, borderTopWidth: 1, borderTopColor: '#1e293b', marginTop: 16 },
+  innerSection: { marginTop: 24 },
   sectionTitle: { color: 'white', fontSize: 18, fontWeight: 'bold', marginBottom: 12 },
   bodyText: { color: '#cbd5e1', lineHeight: 22, textAlign: 'justify' },
 
-  tabBar: { flexDirection: 'row', backgroundColor: '#0f172a', padding: 4, borderRadius: 8, marginBottom: 16 },
+  tabBar: { flexDirection: 'row', backgroundColor: '#0f172a', padding: 4, borderRadius: 8, marginBottom: 16, flexWrap: 'wrap', rowGap: 4 },
   tabActive: { backgroundColor: '#1e293b', color: 'white', paddingVertical: 6, paddingHorizontal: 12, borderRadius: 6, fontWeight: 'bold', overflow: 'hidden' },
   tabInactive: { color: '#94a3b8', paddingVertical: 6, paddingHorizontal: 12 },
 
@@ -346,8 +403,8 @@ const styles = StyleSheet.create({
 
   cardContainer: {
     backgroundColor: '#0f172a',
-    marginHorizontal: 16,
-    marginBottom: 16,
+    marginHorizontal: 0, 
+    marginTop: 24,
     borderRadius: 8,
     padding: 16,
     borderWidth: 1,
@@ -388,4 +445,11 @@ const styles = StyleSheet.create({
   keywordContainer: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   keywordBadge: { backgroundColor: 'transparent', borderWidth: 1, borderColor: '#334155', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 },
   keywordText: { color: '#e2e8f0', fontSize: 12 },
+
+  personRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 16, borderBottomWidth: 1, borderBottomColor: '#1e293b', paddingBottom: 16 },
+  avatar: { width: 50, height: 50, borderRadius: 25, backgroundColor: '#333', marginRight: 16 },
+  personInfo: { flex: 1 },
+  personName: { color: 'white', fontSize: 16, fontWeight: 'bold' },
+  personRole: { color: '#94a3b8', fontSize: 14 },
+  personDept: { color: '#64748b', fontSize: 12 },
 });

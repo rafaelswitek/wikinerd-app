@@ -20,18 +20,6 @@ export interface Provider {
   display_priority: number;
 }
 
-export interface CrewMember {
-  id: string;
-  name: string;
-  job: string;
-  department: string;
-}
-
-export interface Credits {
-  crew: CrewMember[];
-  cast: any[];
-}
-
 export interface ExternalId {
   platform: string;
   external_id: string;
@@ -71,7 +59,27 @@ export interface Movie {
   status?: string;
   genres?: Genre[];
   keywords?: Keyword[];
-  credits?: Credits;
   external_ids?: ExternalId[];
   collection?: Collection;
+}
+
+export interface CastMember {
+  id: string;
+  name: string;
+  character: string;
+  profile_path: {
+    tmdb: string | null;
+  };
+}
+
+export interface CrewMember {
+  id: string;
+  name: string;
+  job: {
+    job: string;
+    department: string;
+  };
+  profile_path: {
+    tmdb: string | null;
+  };
 }
