@@ -1,12 +1,12 @@
 import React, { useEffect, useState } from "react";
-import { ScrollView, View, Image, StyleSheet, Dimensions, StatusBar, TouchableOpacity, Linking, Modal } from "react-native";
+import { ScrollView, View, Image, StyleSheet, Dimensions, StatusBar, TouchableOpacity, Linking, Modal, FlatList } from "react-native";
 import { Text, ActivityIndicator, Chip, Button, Divider } from "react-native-paper";
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { api } from "../services/api";
 import { CastMember, CrewMember, Movie, Provider } from "../types/Movie";
 import { getCertificationColor, getMediaYear } from "../utils/helpers";
+import MediaCard from "../components/MediaCard";
 
-// Adicionando height para o modal fullscreen
 const { width, height } = Dimensions.get("window");
 
 interface MediaImage {
@@ -15,7 +15,7 @@ interface MediaImage {
   aspect_ratio: string;
   height: number;
   width: number;
-  type: string; // Adicionado o campo type que vem da API
+  type: string;
 }
 
 interface MediaVideo {
@@ -26,6 +26,15 @@ interface MediaVideo {
   type: string;
 }
 
+interface CollectionResponse {
+  id: string;
+  name: string;
+  overview: string;
+  poster_path: { tmdb: string | null };
+  backdrop_path: { tmdb: string | null };
+  movies: Movie[];
+}
+
 export default function MediaDetailsScreen({ route }: any) {
   const { slug } = route.params;
   const [movie, setMovie] = useState<Movie | null>(null);
@@ -34,14 +43,20 @@ export default function MediaDetailsScreen({ route }: any) {
   const [crew, setCrew] = useState<CrewMember[]>([]);
   const [images, setImages] = useState<MediaImage[]>([]);
   const [videos, setVideos] = useState<MediaVideo[]>([]);
+  
+  const [collectionData, setCollectionData] = useState<CollectionResponse | null>(null);
+
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<"about" | "cast" | "crew" | "videos" | "images" | "reviews">("about");
 
-  // Novos estados para controlar o modal de imagem fullscreen
   const [selectedImage, setSelectedImage] = useState<MediaImage | null>(null);
   const [isModalVisible, setIsModalVisible] = useState(false);
 
   useEffect(() => {
+    setMovie(null);
+    setCollectionData(null);
+    setLoading(true);
+
     async function fetchData() {
       try {
         const movieRes = await api.get(`https://api.wikinerd.com.br/api/movies/${slug}`);
@@ -49,20 +64,28 @@ export default function MediaDetailsScreen({ route }: any) {
         setMovie(movieData);
 
         if (movieData.id) {
-          const providerRes = await api.get(`https://api.wikinerd.com.br/api/movies/${movieData.id}/providers`);
+          const [providerRes, castRes, crewRes, imagesRes, videosRes] = await Promise.all([
+            api.get(`https://api.wikinerd.com.br/api/movies/${movieData.id}/providers`),
+            api.get(`https://api.wikinerd.com.br/api/movies/${movieData.id}/cast`),
+            api.get(`https://api.wikinerd.com.br/api/movies/${movieData.id}/crew`),
+            api.get(`https://api.wikinerd.com.br/api/movies/${movieData.id}/images`),
+            api.get(`https://api.wikinerd.com.br/api/movies/${movieData.id}/videos`),
+          ]);
+
           setProviders(providerRes.data);
-
-          const castRes = await api.get(`https://api.wikinerd.com.br/api/movies/${movieData.id}/cast`);
           setCast(castRes.data);
-
-          const crewRes = await api.get(`https://api.wikinerd.com.br/api/movies/${movieData.id}/crew`);
           setCrew(crewRes.data);
-
-          const imagesRes = await api.get(`https://api.wikinerd.com.br/api/movies/${movieData.id}/images`);
           setImages(imagesRes.data);
-
-          const videosRes = await api.get(`https://api.wikinerd.com.br/api/movies/${movieData.id}/videos`);
           setVideos(videosRes.data);
+
+          if (movieData.collection?.id) {
+            try {
+              const collectionRes = await api.get(`https://api.wikinerd.com.br/api/collection/${movieData.collection.id}/movies`);
+              setCollectionData(collectionRes.data);
+            } catch (err) {
+              console.error("Erro ao carregar coleção:", err);
+            }
+          }
         }
       } catch (error) {
         console.error("Erro ao carregar dados:", error);
@@ -73,18 +96,15 @@ export default function MediaDetailsScreen({ route }: any) {
     fetchData();
   }, [slug]);
 
-  // Função auxiliar para abrir o modal
   const openImageModal = (image: MediaImage) => {
     setSelectedImage(image);
     setIsModalVisible(true);
   };
 
-  // Função auxiliar para fechar o modal
   const closeImageModal = () => {
     setIsModalVisible(false);
     setSelectedImage(null);
   };
-
 
   if (loading) {
     return (
@@ -151,10 +171,6 @@ export default function MediaDetailsScreen({ route }: any) {
     }
   };
 
-  const collectionImage = movie.collection?.poster_path?.tmdb
-    ? `https://image.tmdb.org/t/p/w500${movie.collection.poster_path.tmdb}`
-    : null;
-
   const renderTabButton = (key: typeof activeTab, label: string) => (
     <TouchableOpacity onPress={() => setActiveTab(key)}>
       <Text style={activeTab === key ? styles.tabActive : styles.tabInactive}>{label}</Text>
@@ -162,12 +178,10 @@ export default function MediaDetailsScreen({ route }: any) {
   );
 
   return (
-    // Envolvemos tudo em um Fragment (<> ... </>) para poder colocar o Modal fora do ScrollView
     <>
       <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 40 }}>
         <StatusBar barStyle="light-content" backgroundColor="#060d17" />
 
-        {/* ... (Cabeçalho, Ações, Gêneros - sem alterações) ... */}
         <View style={styles.headerWrapper}>
           {backdrop && <Image source={{ uri: backdrop }} style={styles.backdrop} resizeMode="cover" />}
           <View style={styles.overlay} />
@@ -215,7 +229,6 @@ export default function MediaDetailsScreen({ route }: any) {
           ))}
         </View>
 
-
         <View style={styles.section}>
           <View style={styles.tabBar}>
             {renderTabButton("about", "Sobre")}
@@ -228,9 +241,24 @@ export default function MediaDetailsScreen({ route }: any) {
 
           {activeTab === "about" && (
             <>
-              {/* ... (Conteúdo da aba Sobre - sem alterações) ... */}
               <Text style={styles.sectionTitle}>Sinopse</Text>
               <Text style={styles.bodyText}>{movie.overview}</Text>
+
+              {collectionData && (
+                <View style={styles.innerSection}>
+                  <Text style={styles.sectionTitle}>Filmes da Coleção</Text>
+                  <Text style={[styles.providerSubTitle, { marginBottom: 8 }]}>{collectionData.name}</Text>
+                  
+                  <FlatList
+                    data={collectionData.movies}
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    keyExtractor={(item) => item.id.toString()}
+                    renderItem={({ item }) => <MediaCard media={item} />}
+                    contentContainerStyle={{ paddingVertical: 8 }}
+                  />
+                </View>
+              )}
 
               <View style={styles.innerSection}>
                 <View style={styles.providersHeader}>
@@ -322,33 +350,6 @@ export default function MediaDetailsScreen({ route }: any) {
                 })}
               </View>
 
-              {movie.collection && (
-                <View style={styles.innerSection}>
-                  <View style={styles.providersHeader}>
-                    <Text style={styles.sectionTitle}>Filmes da Coleção</Text>
-                    <TouchableOpacity><View style={styles.iconCircleSmall}><Icon name="menu" size={16} color="#cbd5e1" /></View></TouchableOpacity>
-                  </View>
-
-                  <View style={styles.collectionContainer}>
-                    <Image
-                      source={{ uri: collectionImage || undefined }}
-                      style={styles.collectionImage}
-                      resizeMode="cover"
-                    />
-                    <View style={styles.collectionOverlay}>
-                      <View style={styles.arrowButton}><Icon name="chevron-left" size={24} color="#64748b" /></View>
-                      <View style={{ flex: 1 }} />
-                      <View style={styles.arrowButton}><Icon name="chevron-right" size={24} color="#e2e8f0" /></View>
-                    </View>
-                    <View style={styles.collectionTitleContainer}>
-                      <Text style={styles.collectionTitleText} numberOfLines={2}>
-                        {movie.collection.name}
-                      </Text>
-                    </View>
-                  </View>
-                </View>
-              )}
-
               {movie.keywords && movie.keywords.length > 0 && (
                 <View style={styles.innerSection}>
                   <Text style={styles.sectionTitle}>Palavras-chave</Text>
@@ -362,7 +363,6 @@ export default function MediaDetailsScreen({ route }: any) {
 
           {activeTab === "cast" && (
             <View>
-              {/* ... (Conteúdo da aba Elenco - sem alterações) ... */}
               <Text style={styles.sectionTitle}>Elenco Principal</Text>
               {cast.map((person) => (
                 <View key={person.id} style={styles.personRow}>
@@ -381,7 +381,6 @@ export default function MediaDetailsScreen({ route }: any) {
 
           {activeTab === "crew" && (
             <View>
-              {/* ... (Conteúdo da aba Equipe - sem alterações) ... */}
               <Text style={styles.sectionTitle}>Equipe Técnica</Text>
               {crew.map((person) => (
                 <View key={person.id + person.job.job} style={styles.personRow}>
@@ -399,7 +398,6 @@ export default function MediaDetailsScreen({ route }: any) {
             </View>
           )}
 
-          {/* SEÇÃO DE IMAGENS ALTERADA */}
           {activeTab === "images" && (
             <View>
               <Text style={styles.sectionTitle}>Imagens</Text>
@@ -417,7 +415,6 @@ export default function MediaDetailsScreen({ route }: any) {
                       style={styles.galleryImage}
                       resizeMode="cover"
                     />
-                    {/* Badge com o tipo da imagem */}
                     <View style={styles.imageBadge}>
                       <Text style={styles.imageBadgeText}>
                         {img.type ? img.type.charAt(0).toUpperCase() + img.type.slice(1) : 'Imagem'}
@@ -431,7 +428,6 @@ export default function MediaDetailsScreen({ route }: any) {
 
           {activeTab === "videos" && (
             <View>
-              {/* ... (Conteúdo da aba Vídeos - sem alterações) ... */}
               <Text style={styles.sectionTitle}>Vídeos</Text>
               {videos.length === 0 && <Text style={styles.metaText}>Nenhum vídeo disponível no momento.</Text>}
               {videos.map((vid) => (
@@ -459,11 +455,10 @@ export default function MediaDetailsScreen({ route }: any) {
         </View>
       </ScrollView>
 
-      {/* Modal de Imagem Fullscreen */}
       <Modal
         visible={isModalVisible}
         transparent={true}
-        onRequestClose={closeImageModal} // Botão de voltar do Android
+        onRequestClose={closeImageModal}
         animationType="fade"
       >
         <View style={styles.modalContainer}>
@@ -474,13 +469,11 @@ export default function MediaDetailsScreen({ route }: any) {
           >
             {selectedImage && (
               <Image
-                // Usando 'original' para a melhor qualidade possível em tela cheia
                 source={{ uri: `https://image.tmdb.org/t/p/original${selectedImage.file_path}` }}
                 style={styles.fullscreenImage}
                 resizeMode="contain"
               />
             )}
-            {/* Botão de fechar explícito (opcional, já que clicar fora fecha) */}
             <TouchableOpacity style={styles.closeButton} onPress={closeImageModal}>
               <Icon name="close-circle" size={40} color="rgba(255,255,255,0.8)" />
             </TouchableOpacity>
@@ -538,7 +531,7 @@ const styles = StyleSheet.create({
 
   cardContainer: {
     backgroundColor: '#0f172a',
-    marginHorizontal: 0,
+    marginHorizontal: 0, 
     marginTop: 24,
     borderRadius: 8,
     padding: 16,
@@ -566,6 +559,7 @@ const styles = StyleSheet.create({
   linkText: { color: 'white', flex: 1, fontWeight: '500' },
 
   iconCircleSmall: { width: 32, height: 32, borderRadius: 16, backgroundColor: '#1e293b', justifyContent: 'center', alignItems: 'center' },
+  
   collectionContainer: { position: 'relative', borderRadius: 8, overflow: 'hidden', height: 380, backgroundColor: '#000' },
   collectionImage: { width: '100%', height: '100%', opacity: 0.8 },
   collectionOverlay: { ...StyleSheet.absoluteFillObject, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 10 },
@@ -588,7 +582,6 @@ const styles = StyleSheet.create({
   personRole: { color: '#94a3b8', fontSize: 14 },
   personDept: { color: '#64748b', fontSize: 12 },
 
-  // ESTILOS ATUALIZADOS E NOVOS PARA IMAGENS E MODAL
   imagesGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   galleryImageContainer: {
     width: (width - 40) / 2,
@@ -596,7 +589,7 @@ const styles = StyleSheet.create({
     borderRadius: 4,
     marginBottom: 8,
     backgroundColor: '#333',
-    position: 'relative', // Importante para o badge absoluto
+    position: 'relative',
     overflow: 'hidden',
   },
   galleryImage: {
@@ -618,10 +611,9 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
 
-  // Estilos do Modal Fullscreen
   modalContainer: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.95)', // Fundo bem escuro
+    backgroundColor: 'rgba(0,0,0,0.95)',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -638,7 +630,7 @@ const styles = StyleSheet.create({
   },
   closeButton: {
     position: 'absolute',
-    top: 50, // Ajuste conforme a barra de status
+    top: 50,
     right: 25,
     zIndex: 10,
   },

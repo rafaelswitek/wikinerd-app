@@ -1,4 +1,3 @@
-// src/components/MediaCard.tsx
 import React from "react";
 import { View, Image, TouchableOpacity } from "react-native";
 import { Text } from "react-native-paper";
@@ -16,15 +15,15 @@ interface Props {
 export default function MediaCard({ media }: Props) {
   const navigation = useNavigation<any>();
   
-  const poster =
-    "https://image.tmdb.org/t/p/w342" + media.poster_path?.tmdb;
+  const poster = media.poster_path?.tmdb
+    ? "https://image.tmdb.org/t/p/w342" + media.poster_path.tmdb
+    : "https://via.placeholder.com/140x210?text=No+Image";
 
   const year = getMediaYear(media);
 
   const handlePress = () => {
-    // Verifica se tem slug (Movies) para navegar
     if (media.slug) {
-        navigation.navigate("MediaDetails", { slug: media.slug });
+        navigation.push("MediaDetails", { slug: media.slug });
     }
   };
 
@@ -64,19 +63,24 @@ export default function MediaCard({ media }: Props) {
           backgroundColor: "#333",
         }}
       />
-      <Text variant="bodySmall" numberOfLines={2} style={{ marginTop: 6 }}>
+      <Text 
+        variant="bodySmall" 
+        numberOfLines={2} 
+        style={{ marginTop: 6, color: 'white', fontWeight: '600' }}
+      >
         {media.title}
       </Text>
+      
       <View style={{ flexDirection: "row", alignItems: "center", marginTop: 2 }}>
         {year && (
-          <Text variant="bodySmall" style={{ opacity: 0.8, marginRight: 6 }}>
+          <Text variant="bodySmall" style={{ color: '#cbd5e1', marginRight: 6 }}>
             {year}
           </Text>
         )}
 
         <Text style={{ marginRight: 2, fontSize: 10 }}>⭐</Text>
 
-        <Text variant="bodySmall" style={{ opacity: 0.8 }}>
+        <Text variant="bodySmall" style={{ color: '#cbd5e1' }}>
           {Number(media.rating_tmdb_average).toFixed(1)}
         </Text>
       </View>
