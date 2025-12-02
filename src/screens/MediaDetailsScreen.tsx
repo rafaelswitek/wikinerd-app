@@ -1,12 +1,30 @@
 import React, { useEffect, useState } from "react";
-import { ScrollView, View, Image, StyleSheet, Dimensions, StatusBar, TouchableOpacity, Linking } from "react-native";
+import { ScrollView, View, Image, StyleSheet, Dimensions, StatusBar, TouchableOpacity, Linking, Modal } from "react-native";
 import { Text, ActivityIndicator, Chip, Button, Divider } from "react-native-paper";
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { api } from "../services/api";
 import { CastMember, CrewMember, Movie, Provider } from "../types/Movie";
 import { getCertificationColor, getMediaYear } from "../utils/helpers";
 
-const { width } = Dimensions.get("window");
+// Adicionando height para o modal fullscreen
+const { width, height } = Dimensions.get("window");
+
+interface MediaImage {
+  id: string;
+  file_path: string;
+  aspect_ratio: string;
+  height: number;
+  width: number;
+  type: string; // Adicionado o campo type que vem da API
+}
+
+interface MediaVideo {
+  id: string;
+  key: string;
+  name: string;
+  site: string;
+  type: string;
+}
 
 export default function MediaDetailsScreen({ route }: any) {
   const { slug } = route.params;
@@ -14,8 +32,14 @@ export default function MediaDetailsScreen({ route }: any) {
   const [providers, setProviders] = useState<Provider[]>([]);
   const [cast, setCast] = useState<CastMember[]>([]);
   const [crew, setCrew] = useState<CrewMember[]>([]);
+  const [images, setImages] = useState<MediaImage[]>([]);
+  const [videos, setVideos] = useState<MediaVideo[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<"about" | "cast" | "crew" | "videos" | "reviews">("about");
+  const [activeTab, setActiveTab] = useState<"about" | "cast" | "crew" | "videos" | "images" | "reviews">("about");
+
+  // Novos estados para controlar o modal de imagem fullscreen
+  const [selectedImage, setSelectedImage] = useState<MediaImage | null>(null);
+  const [isModalVisible, setIsModalVisible] = useState(false);
 
   useEffect(() => {
     async function fetchData() {
@@ -33,6 +57,12 @@ export default function MediaDetailsScreen({ route }: any) {
 
           const crewRes = await api.get(`https://api.wikinerd.com.br/api/movies/${movieData.id}/crew`);
           setCrew(crewRes.data);
+
+          const imagesRes = await api.get(`https://api.wikinerd.com.br/api/movies/${movieData.id}/images`);
+          setImages(imagesRes.data);
+
+          const videosRes = await api.get(`https://api.wikinerd.com.br/api/movies/${movieData.id}/videos`);
+          setVideos(videosRes.data);
         }
       } catch (error) {
         console.error("Erro ao carregar dados:", error);
@@ -42,6 +72,19 @@ export default function MediaDetailsScreen({ route }: any) {
     }
     fetchData();
   }, [slug]);
+
+  // Função auxiliar para abrir o modal
+  const openImageModal = (image: MediaImage) => {
+    setSelectedImage(image);
+    setIsModalVisible(true);
+  };
+
+  // Função auxiliar para fechar o modal
+  const closeImageModal = () => {
+    setIsModalVisible(false);
+    setSelectedImage(null);
+  };
+
 
   if (loading) {
     return (
@@ -119,240 +162,332 @@ export default function MediaDetailsScreen({ route }: any) {
   );
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 40 }}>
-      <StatusBar barStyle="light-content" backgroundColor="#060d17" />
+    // Envolvemos tudo em um Fragment (<> ... </>) para poder colocar o Modal fora do ScrollView
+    <>
+      <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 40 }}>
+        <StatusBar barStyle="light-content" backgroundColor="#060d17" />
 
-      <View style={styles.headerWrapper}>
-        {backdrop && <Image source={{ uri: backdrop }} style={styles.backdrop} resizeMode="cover" />}
-        <View style={styles.overlay} />
-        <View style={styles.headerContent}>
-          <Image source={{ uri: poster || undefined }} style={styles.poster} />
-          <View style={styles.headerInfo}>
-            <Text variant="headlineSmall" style={styles.title}>{movie.title}</Text>
-            <Text variant="bodyMedium" style={styles.originalTitle}>{movie.original_title}</Text>
-            <View style={styles.badgesRow}>
-              <View style={styles.statusBadge}><Text style={styles.statusText}>Lançado</Text></View>
-              <Text style={styles.metaText}>📅 {getMediaYear(movie)}</Text>
-              <Text style={styles.metaText}>🕒 {formatRuntime(movie.runtime)}</Text>
-              {movie.certification && (
-                <View style={[styles.certBadge, { backgroundColor: getCertificationColor(movie.certification) }]}>
-                  <Text style={styles.certText}>{movie.certification}</Text>
-                </View>
-              )}
+        {/* ... (Cabeçalho, Ações, Gêneros - sem alterações) ... */}
+        <View style={styles.headerWrapper}>
+          {backdrop && <Image source={{ uri: backdrop }} style={styles.backdrop} resizeMode="cover" />}
+          <View style={styles.overlay} />
+          <View style={styles.headerContent}>
+            <Image source={{ uri: poster || undefined }} style={styles.poster} />
+            <View style={styles.headerInfo}>
+              <Text variant="headlineSmall" style={styles.title}>{movie.title}</Text>
+              <Text variant="bodyMedium" style={styles.originalTitle}>{movie.original_title}</Text>
+              <View style={styles.badgesRow}>
+                <View style={styles.statusBadge}><Text style={styles.statusText}>Lançado</Text></View>
+                <Text style={styles.metaText}>📅 {getMediaYear(movie)}</Text>
+                <Text style={styles.metaText}>🕒 {formatRuntime(movie.runtime)}</Text>
+                {movie.certification && (
+                  <View style={[styles.certBadge, { backgroundColor: getCertificationColor(movie.certification) }]}>
+                    <Text style={styles.certText}>{movie.certification}</Text>
+                  </View>
+                )}
+              </View>
+
+              {movie.tagline && <Text style={styles.tagline}>"{movie.tagline}"</Text>}
+
+              <View style={styles.ratingRow}>
+                <Icon name="star" size={20} color="#4285F4" />
+                <Text style={styles.ratingScore}> {Number(movie.rating_tmdb_average).toFixed(1)}</Text>
+                <Text style={styles.ratingCount}> ({movie.rating_tmdb_count})</Text>
+              </View>
+
+              <Button mode="outlined" icon="bookmark-outline" textColor="white" style={styles.actionButton} onPress={() => { }}>Quero Ver</Button>
             </View>
-
-            {movie.tagline && <Text style={styles.tagline}>"{movie.tagline}"</Text>}
-
-            <View style={styles.ratingRow}>
-              <Icon name="star" size={20} color="#4285F4" />
-              <Text style={styles.ratingScore}> {Number(movie.rating_tmdb_average).toFixed(1)}</Text>
-              <Text style={styles.ratingCount}> ({movie.rating_tmdb_count})</Text>
-            </View>
-
-            <Button mode="outlined" icon="bookmark-outline" textColor="white" style={styles.actionButton} onPress={() => { }}>Quero Ver</Button>
           </View>
         </View>
-      </View>
 
-      <View style={styles.actionsBar}>
-        <Button mode="contained" icon="check" buttonColor="#0ea5e9" style={styles.gridButton}>Assistido</Button>
-        <Button mode="contained" icon="thumb-up" buttonColor="#22c55e" style={styles.gridButton}>Gostei</Button>
-      </View>
-      <View style={[styles.actionsBar, { marginTop: 8 }]}>
-        <Button mode="outlined" icon="thumb-down" textColor="#cbd5e1" style={[styles.gridButton, { borderColor: '#334155' }]}>Não Gostei</Button>
-        <Button mode="outlined" icon="star-outline" textColor="#cbd5e1" style={[styles.gridButton, { borderColor: '#334155' }]}>Favorito</Button>
-      </View>
-
-      <View style={styles.genresContainer}>
-        {movie.genres?.map((g) => (
-          <Chip key={g.id} style={styles.genreChip} textStyle={{ color: '#cbd5e1', fontSize: 12 }}>{g.name}</Chip>
-        ))}
-      </View>
-
-      <View style={styles.section}>
-        <View style={styles.tabBar}>
-          {renderTabButton("about", "Sobre")}
-          {renderTabButton("cast", "Elenco")}
-          {renderTabButton("crew", "Equipe")}
-          {renderTabButton("videos", "Vídeos")}
-          {renderTabButton("reviews", "Reviews")}
+        <View style={styles.actionsBar}>
+          <Button mode="contained" icon="check" buttonColor="#0ea5e9" style={styles.gridButton}>Assistido</Button>
+          <Button mode="contained" icon="thumb-up" buttonColor="#22c55e" style={styles.gridButton}>Gostei</Button>
+        </View>
+        <View style={[styles.actionsBar, { marginTop: 8 }]}>
+          <Button mode="outlined" icon="thumb-down" textColor="#cbd5e1" style={[styles.gridButton, { borderColor: '#334155' }]}>Não Gostei</Button>
+          <Button mode="outlined" icon="star-outline" textColor="#cbd5e1" style={[styles.gridButton, { borderColor: '#334155' }]}>Favorito</Button>
         </View>
 
-        {activeTab === "about" && (
-          <>
-            <Text style={styles.sectionTitle}>Sinopse</Text>
-            <Text style={styles.bodyText}>{movie.overview}</Text>
+        <View style={styles.genresContainer}>
+          {movie.genres?.map((g) => (
+            <Chip key={g.id} style={styles.genreChip} textStyle={{ color: '#cbd5e1', fontSize: 12 }}>{g.name}</Chip>
+          ))}
+        </View>
 
-            <View style={styles.innerSection}>
-              <View style={styles.providersHeader}>
-                <Text style={styles.sectionTitle}>Onde Assistir</Text>
-                <TouchableOpacity><View style={styles.seeMoreBadge}><Text style={styles.seeMoreText}>Ver opções ▾</Text></View></TouchableOpacity>
-              </View>
-              <Text style={styles.providerSubTitle}>{providerLabel}</Text>
-              <View style={styles.providersGrid}>
-                {displayProviders.length > 0 ? (
-                  displayProviders.map((prov) => (
-                    <View key={`${prov.id}-${prov.type}`} style={styles.providerItem}>
-                      <Image source={{ uri: `https://image.tmdb.org/t/p/w92${prov.logo_path.tmdb}` }} style={styles.providerLogo} />
-                      <Text style={styles.providerName} numberOfLines={2}>{prov.name}</Text>
-                    </View>
-                  ))
-                ) : (<Text style={styles.metaText}>Nenhum serviço encontrado.</Text>)}
-              </View>
-            </View>
 
-            <View style={styles.innerSection}>
-              <Text style={styles.sectionTitle}>Informações Técnicas</Text>
-              <View style={styles.techGrid}>
-                <View style={styles.techItem}><Text style={styles.techLabel}>País de Origem</Text><Text style={styles.techValue}>Estados Unidos</Text></View>
-                <View style={styles.techItem}><Text style={styles.techLabel}>Orçamento</Text><Text style={styles.techValue}>{formatCurrency(movie.budget)}</Text></View>
-                <View style={styles.techItem}><Text style={styles.techLabel}>Bilheteria</Text><Text style={styles.techValue}>{formatCurrency(movie.revenue)}</Text></View>
-                <View style={styles.techItem}><Text style={styles.techLabel}>Status</Text><Text style={styles.techValue}>{movie.status}</Text></View>
-                <View style={styles.techItem}><Text style={styles.techLabel}>Lançamento</Text><Text style={styles.techValue}>{formatDate(movie.release_date)}</Text></View>
-                <View style={styles.techItem}><Text style={styles.techLabel}>Duração</Text><Text style={styles.techValue}>{formatRuntime(movie.runtime)}</Text></View>
-              </View>
-            </View>
+        <View style={styles.section}>
+          <View style={styles.tabBar}>
+            {renderTabButton("about", "Sobre")}
+            {renderTabButton("cast", "Elenco")}
+            {renderTabButton("crew", "Equipe")}
+            {renderTabButton("images", "Imagens")}
+            {renderTabButton("videos", "Vídeos")}
+            {renderTabButton("reviews", "Reviews")}
+          </View>
 
-            <View style={styles.cardContainer}>
-              <Text style={styles.cardTitle}>Classificação Etária</Text>
-              <View style={styles.contentRow}>
-                <View style={[styles.largeCertBadge, { backgroundColor: movie.certification ? getCertificationColor(movie.certification) : "#666" }]}>
-                  <Text style={styles.largeCertText}>{movie.certification || "?"}</Text>
-                </View>
-                <View style={{ flex: 1, marginLeft: 12 }}>
-                  <Text style={styles.infoTitle}>ClassInd</Text>
-                  <Text style={styles.infoSubtitle}>{movie.certification ? `${movie.certification} anos` : "Não informado"}</Text>
-                </View>
-                <View style={styles.countryBadge}><Text style={styles.countryText}>Brasil</Text></View>
-              </View>
-            </View>
+          {activeTab === "about" && (
+            <>
+              {/* ... (Conteúdo da aba Sobre - sem alterações) ... */}
+              <Text style={styles.sectionTitle}>Sinopse</Text>
+              <Text style={styles.bodyText}>{movie.overview}</Text>
 
-            <View style={styles.cardContainer}>
-              <Text style={styles.cardTitle}>Notas da Crítica</Text>
-              <View style={styles.contentRow}>
-                <View style={[styles.scoreBox, { backgroundColor: tmdbScore >= 7 ? "#22c55e" : tmdbScore >= 5 ? "#eab308" : "#ef4444" }]}>
-                  <Text style={styles.scoreText}>{tmdbScore.toFixed(1)}</Text>
-                </View>
-                <View style={{ flex: 1, marginLeft: 12 }}>
-                  <Text style={styles.infoTitle}>TMDb</Text>
-                  <Text style={styles.infoSubtitle}>{tmdbScore >= 7 ? "Favorável" : "Misto"}</Text>
-                </View>
-                <Icon name="open-in-new" size={20} color="#94a3b8" />
-              </View>
-              <Divider style={styles.divider} />
-              <View style={{ alignItems: 'center' }}>
-                <Text style={styles.infoSubtitle}>Média da Crítica</Text>
-                <Text style={styles.bigScore}>{(tmdbScore / 2).toFixed(1)}/5</Text>
-              </View>
-            </View>
-
-            <View style={styles.cardContainer}>
-              <Text style={styles.cardTitle}>Principais Créditos</Text>
-              {photography && (<View style={styles.crewRow}><View style={styles.iconCircle}><Icon name="filmstrip" size={20} color="#3b82f6" /></View><View style={styles.crewInfo}><Text style={styles.infoSubtitle}>Fotografia</Text><Text style={styles.infoTitle}>{photography}</Text></View></View>)}
-              {music && (<><Divider style={styles.divider} /><View style={styles.crewRow}><View style={styles.iconCircle}><Icon name="music-note" size={20} color="#3b82f6" /></View><View style={styles.crewInfo}><Text style={styles.infoSubtitle}>Trilha Sonora</Text><Text style={styles.infoTitle}>{music}</Text></View></View></>)}
-              {producers && (<><Divider style={styles.divider} /><View style={styles.crewRow}><View style={styles.iconCircle}><Icon name="account-group" size={20} color="#3b82f6" /></View><View style={styles.crewInfo}><Text style={styles.infoSubtitle}>Produção</Text><Text style={styles.infoTitle}>{producers}</Text></View></View></>)}
-            </View>
-
-            <View style={styles.cardContainer}>
-              <Text style={styles.cardTitle}>Links Externos</Text>
-              {movie.external_ids?.map((item) => {
-                const { icon, color, label, url } = getSocialData(item.platform);
-                return (
-                  <TouchableOpacity
-                    key={item.platform}
-                    style={styles.linkRow}
-                    onPress={() => Linking.openURL(`${url}${item.external_id}`)}
-                  >
-                    <View style={[styles.linkIconBox, { backgroundColor: color }]}>
-                      <Icon name={icon} size={16} color="white" />
-                    </View>
-                    <Text style={styles.linkText}>{label}</Text>
-                    <Icon name="open-in-new" size={16} color="#94a3b8" />
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-
-            {movie.collection && (
               <View style={styles.innerSection}>
                 <View style={styles.providersHeader}>
-                  <Text style={styles.sectionTitle}>Filmes da Coleção</Text>
-                  <TouchableOpacity><View style={styles.iconCircleSmall}><Icon name="menu" size={16} color="#cbd5e1" /></View></TouchableOpacity>
+                  <Text style={styles.sectionTitle}>Onde Assistir</Text>
+                  <TouchableOpacity><View style={styles.seeMoreBadge}><Text style={styles.seeMoreText}>Ver opções ▾</Text></View></TouchableOpacity>
                 </View>
-
-                <View style={styles.collectionContainer}>
-                  <Image
-                    source={{ uri: collectionImage || undefined }}
-                    style={styles.collectionImage}
-                    resizeMode="cover"
-                  />
-                  <View style={styles.collectionOverlay}>
-                    <View style={styles.arrowButton}><Icon name="chevron-left" size={24} color="#64748b" /></View>
-                    <View style={{ flex: 1 }} />
-                    <View style={styles.arrowButton}><Icon name="chevron-right" size={24} color="#e2e8f0" /></View>
-                  </View>
-                  <View style={styles.collectionTitleContainer}>
-                    <Text style={styles.collectionTitleText} numberOfLines={2}>
-                      {movie.collection.name}
-                    </Text>
-                  </View>
+                <Text style={styles.providerSubTitle}>{providerLabel}</Text>
+                <View style={styles.providersGrid}>
+                  {displayProviders.length > 0 ? (
+                    displayProviders.map((prov) => (
+                      <View key={`${prov.id}-${prov.type}`} style={styles.providerItem}>
+                        <Image source={{ uri: `https://image.tmdb.org/t/p/w92${prov.logo_path.tmdb}` }} style={styles.providerLogo} />
+                        <Text style={styles.providerName} numberOfLines={2}>{prov.name}</Text>
+                      </View>
+                    ))
+                  ) : (<Text style={styles.metaText}>Nenhum serviço encontrado.</Text>)}
                 </View>
               </View>
-            )}
 
-            {movie.keywords && movie.keywords.length > 0 && (
               <View style={styles.innerSection}>
-                <Text style={styles.sectionTitle}>Palavras-chave</Text>
-                <View style={styles.keywordContainer}>
-                  {movie.keywords.map(k => (<View key={k.id} style={styles.keywordBadge}><Text style={styles.keywordText}>{k.name}</Text></View>))}
+                <Text style={styles.sectionTitle}>Informações Técnicas</Text>
+                <View style={styles.techGrid}>
+                  <View style={styles.techItem}><Text style={styles.techLabel}>País de Origem</Text><Text style={styles.techValue}>Estados Unidos</Text></View>
+                  <View style={styles.techItem}><Text style={styles.techLabel}>Orçamento</Text><Text style={styles.techValue}>{formatCurrency(movie.budget)}</Text></View>
+                  <View style={styles.techItem}><Text style={styles.techLabel}>Bilheteria</Text><Text style={styles.techValue}>{formatCurrency(movie.revenue)}</Text></View>
+                  <View style={styles.techItem}><Text style={styles.techLabel}>Status</Text><Text style={styles.techValue}>{movie.status}</Text></View>
+                  <View style={styles.techItem}><Text style={styles.techLabel}>Lançamento</Text><Text style={styles.techValue}>{formatDate(movie.release_date)}</Text></View>
+                  <View style={styles.techItem}><Text style={styles.techLabel}>Duração</Text><Text style={styles.techValue}>{formatRuntime(movie.runtime)}</Text></View>
                 </View>
               </View>
+
+              <View style={styles.cardContainer}>
+                <Text style={styles.cardTitle}>Classificação Etária</Text>
+                <View style={styles.contentRow}>
+                  <View style={[styles.largeCertBadge, { backgroundColor: movie.certification ? getCertificationColor(movie.certification) : "#666" }]}>
+                    <Text style={styles.largeCertText}>{movie.certification || "?"}</Text>
+                  </View>
+                  <View style={{ flex: 1, marginLeft: 12 }}>
+                    <Text style={styles.infoTitle}>ClassInd</Text>
+                    <Text style={styles.infoSubtitle}>{movie.certification ? `${movie.certification} anos` : "Não informado"}</Text>
+                  </View>
+                  <View style={styles.countryBadge}><Text style={styles.countryText}>Brasil</Text></View>
+                </View>
+              </View>
+
+              <View style={styles.cardContainer}>
+                <Text style={styles.cardTitle}>Notas da Crítica</Text>
+                <View style={styles.contentRow}>
+                  <View style={[styles.scoreBox, { backgroundColor: tmdbScore >= 7 ? "#22c55e" : tmdbScore >= 5 ? "#eab308" : "#ef4444" }]}>
+                    <Text style={styles.scoreText}>{tmdbScore.toFixed(1)}</Text>
+                  </View>
+                  <View style={{ flex: 1, marginLeft: 12 }}>
+                    <Text style={styles.infoTitle}>TMDb</Text>
+                    <Text style={styles.infoSubtitle}>{tmdbScore >= 7 ? "Favorável" : "Misto"}</Text>
+                  </View>
+                  <Icon name="open-in-new" size={20} color="#94a3b8" />
+                </View>
+                <Divider style={styles.divider} />
+                <View style={{ alignItems: 'center' }}>
+                  <Text style={styles.infoSubtitle}>Média da Crítica</Text>
+                  <Text style={styles.bigScore}>{(tmdbScore / 2).toFixed(1)}/5</Text>
+                </View>
+              </View>
+
+              <View style={styles.cardContainer}>
+                <Text style={styles.cardTitle}>Principais Créditos</Text>
+                {photography && (<View style={styles.crewRow}><View style={styles.iconCircle}><Icon name="filmstrip" size={20} color="#3b82f6" /></View><View style={styles.crewInfo}><Text style={styles.infoSubtitle}>Fotografia</Text><Text style={styles.infoTitle}>{photography}</Text></View></View>)}
+                {music && (<><Divider style={styles.divider} /><View style={styles.crewRow}><View style={styles.iconCircle}><Icon name="music-note" size={20} color="#3b82f6" /></View><View style={styles.crewInfo}><Text style={styles.infoSubtitle}>Trilha Sonora</Text><Text style={styles.infoTitle}>{music}</Text></View></View></>)}
+                {producers && (<><Divider style={styles.divider} /><View style={styles.crewRow}><View style={styles.iconCircle}><Icon name="account-group" size={20} color="#3b82f6" /></View><View style={styles.crewInfo}><Text style={styles.infoSubtitle}>Produção</Text><Text style={styles.infoTitle}>{producers}</Text></View></View></>)}
+              </View>
+
+              <View style={styles.cardContainer}>
+                <Text style={styles.cardTitle}>Links Externos</Text>
+                {movie.external_ids?.map((item) => {
+                  const { icon, color, label, url } = getSocialData(item.platform);
+                  return (
+                    <TouchableOpacity
+                      key={item.platform}
+                      style={styles.linkRow}
+                      onPress={() => Linking.openURL(`${url}${item.external_id}`)}
+                    >
+                      <View style={[styles.linkIconBox, { backgroundColor: color }]}>
+                        <Icon name={icon} size={16} color="white" />
+                      </View>
+                      <Text style={styles.linkText}>{label}</Text>
+                      <Icon name="open-in-new" size={16} color="#94a3b8" />
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+
+              {movie.collection && (
+                <View style={styles.innerSection}>
+                  <View style={styles.providersHeader}>
+                    <Text style={styles.sectionTitle}>Filmes da Coleção</Text>
+                    <TouchableOpacity><View style={styles.iconCircleSmall}><Icon name="menu" size={16} color="#cbd5e1" /></View></TouchableOpacity>
+                  </View>
+
+                  <View style={styles.collectionContainer}>
+                    <Image
+                      source={{ uri: collectionImage || undefined }}
+                      style={styles.collectionImage}
+                      resizeMode="cover"
+                    />
+                    <View style={styles.collectionOverlay}>
+                      <View style={styles.arrowButton}><Icon name="chevron-left" size={24} color="#64748b" /></View>
+                      <View style={{ flex: 1 }} />
+                      <View style={styles.arrowButton}><Icon name="chevron-right" size={24} color="#e2e8f0" /></View>
+                    </View>
+                    <View style={styles.collectionTitleContainer}>
+                      <Text style={styles.collectionTitleText} numberOfLines={2}>
+                        {movie.collection.name}
+                      </Text>
+                    </View>
+                  </View>
+                </View>
+              )}
+
+              {movie.keywords && movie.keywords.length > 0 && (
+                <View style={styles.innerSection}>
+                  <Text style={styles.sectionTitle}>Palavras-chave</Text>
+                  <View style={styles.keywordContainer}>
+                    {movie.keywords.map(k => (<View key={k.id} style={styles.keywordBadge}><Text style={styles.keywordText}>{k.name}</Text></View>))}
+                  </View>
+                </View>
+              )}
+            </>
+          )}
+
+          {activeTab === "cast" && (
+            <View>
+              {/* ... (Conteúdo da aba Elenco - sem alterações) ... */}
+              <Text style={styles.sectionTitle}>Elenco Principal</Text>
+              {cast.map((person) => (
+                <View key={person.id} style={styles.personRow}>
+                  <Image
+                    source={{ uri: person.profile_path?.tmdb ? `https://image.tmdb.org/t/p/w185${person.profile_path.tmdb}` : undefined }}
+                    style={styles.avatar}
+                  />
+                  <View style={styles.personInfo}>
+                    <Text style={styles.personName}>{person.name}</Text>
+                    <Text style={styles.personRole}>{person.character}</Text>
+                  </View>
+                </View>
+              ))}
+            </View>
+          )}
+
+          {activeTab === "crew" && (
+            <View>
+              {/* ... (Conteúdo da aba Equipe - sem alterações) ... */}
+              <Text style={styles.sectionTitle}>Equipe Técnica</Text>
+              {crew.map((person) => (
+                <View key={person.id + person.job.job} style={styles.personRow}>
+                  <Image
+                    source={{ uri: person.profile_path?.tmdb ? `https://image.tmdb.org/t/p/w185${person.profile_path.tmdb}` : undefined }}
+                    style={styles.avatar}
+                  />
+                  <View style={styles.personInfo}>
+                    <Text style={styles.personName}>{person.name}</Text>
+                    <Text style={styles.personRole}>{person.job.job}</Text>
+                    <Text style={styles.personDept}>{person.job.department}</Text>
+                  </View>
+                </View>
+              ))}
+            </View>
+          )}
+
+          {/* SEÇÃO DE IMAGENS ALTERADA */}
+          {activeTab === "images" && (
+            <View>
+              <Text style={styles.sectionTitle}>Imagens</Text>
+              {images.length === 0 && <Text style={styles.metaText}>Nenhuma imagem encontrada.</Text>}
+              <View style={styles.imagesGrid}>
+                {images.map((img) => (
+                  <TouchableOpacity
+                    key={img.id}
+                    style={styles.galleryImageContainer}
+                    onPress={() => openImageModal(img)}
+                    activeOpacity={0.8}
+                  >
+                    <Image
+                      source={{ uri: `https://image.tmdb.org/t/p/w500${img.file_path}` }}
+                      style={styles.galleryImage}
+                      resizeMode="cover"
+                    />
+                    {/* Badge com o tipo da imagem */}
+                    <View style={styles.imageBadge}>
+                      <Text style={styles.imageBadgeText}>
+                        {img.type ? img.type.charAt(0).toUpperCase() + img.type.slice(1) : 'Imagem'}
+                      </Text>
+                    </View>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+          )}
+
+          {activeTab === "videos" && (
+            <View>
+              {/* ... (Conteúdo da aba Vídeos - sem alterações) ... */}
+              <Text style={styles.sectionTitle}>Vídeos</Text>
+              {videos.length === 0 && <Text style={styles.metaText}>Nenhum vídeo disponível no momento.</Text>}
+              {videos.map((vid) => (
+                <TouchableOpacity
+                  key={vid.id}
+                  style={styles.videoItem}
+                  onPress={() => vid.site === "YouTube" && Linking.openURL(`https://www.youtube.com/watch?v=${vid.key}`)}
+                >
+                  <Image
+                    source={{ uri: `https://img.youtube.com/vi/${vid.key}/0.jpg` }}
+                    style={styles.videoThumbnail}
+                  />
+                  <View style={styles.videoInfo}>
+                    <Text style={styles.videoName} numberOfLines={2}>{vid.name}</Text>
+                    <Text style={styles.videoType}>{vid.type}</Text>
+                  </View>
+                  <Icon name="play-circle-outline" size={32} color="#cbd5e1" />
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
+
+          {activeTab === "reviews" && <Text style={styles.metaText}>Nenhuma avaliação disponível no momento.</Text>}
+
+        </View>
+      </ScrollView>
+
+      {/* Modal de Imagem Fullscreen */}
+      <Modal
+        visible={isModalVisible}
+        transparent={true}
+        onRequestClose={closeImageModal} // Botão de voltar do Android
+        animationType="fade"
+      >
+        <View style={styles.modalContainer}>
+          <TouchableOpacity
+            style={styles.modalCloseArea}
+            activeOpacity={1}
+            onPress={closeImageModal}
+          >
+            {selectedImage && (
+              <Image
+                // Usando 'original' para a melhor qualidade possível em tela cheia
+                source={{ uri: `https://image.tmdb.org/t/p/original${selectedImage.file_path}` }}
+                style={styles.fullscreenImage}
+                resizeMode="contain"
+              />
             )}
-          </>
-        )}
-
-        {activeTab === "cast" && (
-          <View>
-            <Text style={styles.sectionTitle}>Elenco Principal</Text>
-            {cast.map((person) => (
-              <View key={person.id} style={styles.personRow}>
-                <Image
-                  source={{ uri: person.profile_path?.tmdb ? `https://image.tmdb.org/t/p/w185${person.profile_path.tmdb}` : undefined }}
-                  style={styles.avatar}
-                />
-                <View style={styles.personInfo}>
-                  <Text style={styles.personName}>{person.name}</Text>
-                  <Text style={styles.personRole}>{person.character}</Text>
-                </View>
-              </View>
-            ))}
-          </View>
-        )}
-
-        {activeTab === "crew" && (
-          <View>
-            <Text style={styles.sectionTitle}>Equipe Técnica</Text>
-            {crew.map((person) => (
-              <View key={person.id + person.job.job} style={styles.personRow}>
-                <Image
-                  source={{ uri: person.profile_path?.tmdb ? `https://image.tmdb.org/t/p/w185${person.profile_path.tmdb}` : undefined }}
-                  style={styles.avatar}
-                />
-                <View style={styles.personInfo}>
-                  <Text style={styles.personName}>{person.name}</Text>
-                  <Text style={styles.personRole}>{person.job.job}</Text>
-                  <Text style={styles.personDept}>{person.job.department}</Text>
-                </View>
-              </View>
-            ))}
-          </View>
-        )}
-
-        {activeTab === "videos" && <Text style={styles.metaText}>Nenhum vídeo disponível no momento.</Text>}
-        {activeTab === "reviews" && <Text style={styles.metaText}>Nenhuma avaliação disponível no momento.</Text>}
-
-      </View>
-    </ScrollView>
+            {/* Botão de fechar explícito (opcional, já que clicar fora fecha) */}
+            <TouchableOpacity style={styles.closeButton} onPress={closeImageModal}>
+              <Icon name="close-circle" size={40} color="rgba(255,255,255,0.8)" />
+            </TouchableOpacity>
+          </TouchableOpacity>
+        </View>
+      </Modal>
+    </>
   );
 }
 
@@ -403,7 +538,7 @@ const styles = StyleSheet.create({
 
   cardContainer: {
     backgroundColor: '#0f172a',
-    marginHorizontal: 0, 
+    marginHorizontal: 0,
     marginTop: 24,
     borderRadius: 8,
     padding: 16,
@@ -452,4 +587,65 @@ const styles = StyleSheet.create({
   personName: { color: 'white', fontSize: 16, fontWeight: 'bold' },
   personRole: { color: '#94a3b8', fontSize: 14 },
   personDept: { color: '#64748b', fontSize: 12 },
+
+  // ESTILOS ATUALIZADOS E NOVOS PARA IMAGENS E MODAL
+  imagesGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  galleryImageContainer: {
+    width: (width - 40) / 2,
+    height: 120,
+    borderRadius: 4,
+    marginBottom: 8,
+    backgroundColor: '#333',
+    position: 'relative', // Importante para o badge absoluto
+    overflow: 'hidden',
+  },
+  galleryImage: {
+    width: '100%',
+    height: '100%',
+  },
+  imageBadge: {
+    position: 'absolute',
+    bottom: 6,
+    right: 6,
+    backgroundColor: 'rgba(0,0,0,0.7)',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 4,
+  },
+  imageBadgeText: {
+    color: 'white',
+    fontSize: 11,
+    fontWeight: 'bold',
+  },
+
+  // Estilos do Modal Fullscreen
+  modalContainer: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.95)', // Fundo bem escuro
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalCloseArea: {
+    flex: 1,
+    width: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
+    position: 'relative',
+  },
+  fullscreenImage: {
+    width: width,
+    height: height,
+  },
+  closeButton: {
+    position: 'absolute',
+    top: 50, // Ajuste conforme a barra de status
+    right: 25,
+    zIndex: 10,
+  },
+
+  videoItem: { flexDirection: 'row', alignItems: 'center', marginBottom: 16, backgroundColor: '#0f172a', borderRadius: 8, padding: 8 },
+  videoThumbnail: { width: 120, height: 68, borderRadius: 4, backgroundColor: '#333' },
+  videoInfo: { flex: 1, marginLeft: 12 },
+  videoName: { color: 'white', fontSize: 14, fontWeight: 'bold', marginBottom: 4 },
+  videoType: { color: '#94a3b8', fontSize: 12 },
 });
