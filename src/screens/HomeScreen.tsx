@@ -1,19 +1,26 @@
 import React from "react";
+import { View } from "react-native";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import MediaTabs from "../components/MediaTabs";
-import { SafeAreaView } from "react-native-safe-area-context";
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import Header from "../components/Header";
 
 const Tab = createBottomTabNavigator();
 
 export default function HomeScreen() {
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "#ffffff" }}>
+    <View style={{ flex: 1, backgroundColor: "#ffffff" }}>
+
+      <Header />
+
       <Tab.Navigator
         initialRouteName="Filmes"
         screenOptions={({ route }) => ({
+          headerShown: false,
           tabBarStyle: {
             backgroundColor: "#ffffff",
+            borderTopWidth: 0,
+            elevation: 5,
           },
           tabBarActiveTintColor: '#6200ee',
           tabBarInactiveTintColor: '#6b7280',
@@ -62,6 +69,6 @@ export default function HomeScreen() {
           {() => <MediaTabs mediaType="others" />}
         </Tab.Screen>
       </Tab.Navigator>
-    </SafeAreaView>
+    </View>
   );
 }
