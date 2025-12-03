@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useContext } from "react";
 import { View } from "react-native";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { createDrawerNavigator, DrawerContentScrollView, DrawerItem } from "@react-navigation/drawer";
@@ -7,6 +7,7 @@ import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import Header from "../components/Header";
 import { useNavigation } from "@react-navigation/native";
 import { useTheme } from "react-native-paper";
+import { AuthContext } from "../context/AuthContext";
 
 const Tab = createBottomTabNavigator();
 const Drawer = createDrawerNavigator();
@@ -55,6 +56,7 @@ function MainTabs() {
 function CustomDrawerContent(props: any) {
   const navigation = useNavigation<any>();
   const theme = useTheme();
+  const { signOut } = useContext(AuthContext);
 
   return (
     <DrawerContentScrollView {...props} style={{ backgroundColor: theme.colors.surface }}>
@@ -74,7 +76,7 @@ function CustomDrawerContent(props: any) {
         label="Sair"
         labelStyle={{ color: theme.colors.onSurface }}
         icon={({ size }) => <Icon name="logout" color={theme.colors.onSurface} size={size} />}
-        onPress={() => console.log("Sair")}
+        onPress={signOut}
       />
     </DrawerContentScrollView>
   );
