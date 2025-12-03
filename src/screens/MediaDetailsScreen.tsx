@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useMemo } from "react";
-import { ScrollView, View, Image, StyleSheet, Dimensions, StatusBar, TouchableOpacity, Linking, Modal, FlatList } from "react-native";
+import { ScrollView, View, Image, StyleSheet, Dimensions, StatusBar, TouchableOpacity, Linking, Modal, FlatList, Share } from "react-native";
 import { Text, ActivityIndicator, Chip, Button, Divider, useTheme } from "react-native-paper";
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { api } from "../services/api";
@@ -41,7 +41,7 @@ interface ProviderSection {
   type: "flatrate" | "buy" | "rent";
 }
 
-// --- Lógica de Ratings (Refatorada) ---
+// --- Lógica de Ratings ---
 
 type RatingKey =
   | 'rating_rotten_average'
@@ -232,6 +232,23 @@ export default function MediaDetailsScreen({ route }: any) {
     setSelectedImage(null);
   };
 
+  const handleShare = async () => {
+    if (!movie) return;
+
+    const deepLink = `https://wikinerd.com.br/filmes/${slug}`;
+    const message = `Confira "${movie.title}" no WikiNerd!\n${deepLink}`;
+
+    try {
+      await Share.share({
+        message: message,
+        url: deepLink,
+        title: `WikiNerd: ${movie.title}`
+      });
+    } catch (error: any) {
+      console.log("Erro ao compartilhar:", error.message);
+    }
+  };
+
   const streamingProviders = providers.filter(p => p.type === 'flatrate');
   const buyProviders = providers.filter(p => p.type === 'buy');
   const rentProviders = providers.filter(p => p.type === 'rent');
@@ -384,6 +401,19 @@ export default function MediaDetailsScreen({ route }: any) {
           <Button mode="outlined" icon="star-outline" textColor={theme.colors.onSurfaceVariant} style={[styles.gridButton, { borderColor: theme.colors.outline }]}>Favorito</Button>
         </View>
 
+        {/* Botão de Compartilhar */}
+        <View style={[styles.actionsBar, { marginTop: 8 }]}>
+          <Button
+            mode="outlined"
+            icon="share-variant"
+            textColor={theme.colors.onSurfaceVariant}
+            style={[styles.gridButton, { borderColor: theme.colors.outline }]}
+            onPress={handleShare}
+          >
+            Compartilhar
+          </Button>
+        </View>
+
         <View style={styles.genresContainer}>
           {movie.genres?.map((g) => (
             <Chip key={g.id} style={[styles.genreChip, { backgroundColor: theme.colors.surfaceVariant }]} textStyle={{ color: theme.colors.onSurfaceVariant, fontSize: 12 }}>{g.name}</Chip>
@@ -490,7 +520,6 @@ export default function MediaDetailsScreen({ route }: any) {
                 </View>
               </View>
 
-              {/* Seção Notas da Crítica (Refatorada) */}
               <View style={[styles.cardContainer, { backgroundColor: theme.colors.surface, borderColor: theme.colors.outlineVariant }]}>
                 <Text style={[styles.cardTitle, { color: theme.colors.onSurface }]}>Notas da Crítica</Text>
 
