@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from "react";
-import { PaperProvider, MD3DarkTheme, MD3LightTheme, adaptNavigationTheme } from "react-native-paper";
+import { PaperProvider, MD3DarkTheme, MD3LightTheme } from "react-native-paper";
 import { NavigationContainer, DarkTheme as NavDarkTheme, DefaultTheme as NavDefaultTheme } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { SafeAreaProvider } from "react-native-safe-area-context";
@@ -9,36 +9,58 @@ import HomeScreen from "./src/screens/HomeScreen";
 import ProfileScreen from "./src/screens/ProfileScreen";
 import MediaDetailsScreen from "./src/screens/MediaDetailsScreen";
 
-const { LightTheme, DarkTheme } = adaptNavigationTheme({
-  reactNavigationLight: NavDefaultTheme,
-  reactNavigationDark: NavDarkTheme,
-});
-
-const CombinedDefaultTheme = {
-  ...MD3LightTheme,
-  ...LightTheme,
-  colors: {
-    ...MD3LightTheme.colors,
-    ...LightTheme.colors,
-    customBackground: '#ffffff',
-    customSurface: '#f1f5f9',
-  },
-  fonts: MD3LightTheme.fonts,
+const paperColorsLight = {
+  ...MD3LightTheme.colors,
+  background: '#ffffff',
+  surface: '#f1f5f9',
+  surfaceVariant: '#e2e8f0',
+  customBackground: '#ffffff',
+  customSurface: '#f1f5f9',
 };
 
-const CombinedDarkTheme = {
+const paperColorsDark = {
+  ...MD3DarkTheme.colors,
+  background: '#060d17',
+  surface: '#0f172a',
+  surfaceVariant: '#1e293b',
+  customBackground: '#060d17',
+  customSurface: '#0f172a',
+};
+
+const paperThemeLight = {
+  ...MD3LightTheme,
+  colors: paperColorsLight,
+};
+
+const paperThemeDark = {
   ...MD3DarkTheme,
-  ...DarkTheme,
+  colors: paperColorsDark,
+};
+
+const navThemeLight = {
+  ...NavDefaultTheme,
   colors: {
-    ...MD3DarkTheme.colors,
-    ...DarkTheme.colors,
-    background: '#060d17',
-    surface: '#0f172a',
-    surfaceVariant: '#1e293b',
-    customBackground: '#060d17',
-    customSurface: '#0f172a',
+    ...NavDefaultTheme.colors,
+    primary: paperColorsLight.primary,
+    background: paperColorsLight.background,
+    card: paperColorsLight.surface,
+    text: paperColorsLight.onSurface,
+    border: paperColorsLight.outline,
+    notification: paperColorsLight.error,
   },
-  fonts: MD3DarkTheme.fonts,
+};
+
+const navThemeDark = {
+  ...NavDarkTheme,
+  colors: {
+    ...NavDarkTheme.colors,
+    primary: paperColorsDark.primary,
+    background: paperColorsDark.background,
+    card: paperColorsDark.surface,
+    text: paperColorsDark.onSurface,
+    border: paperColorsDark.outline,
+    notification: paperColorsDark.error,
+  },
 };
 
 const Stack = createNativeStackNavigator();
@@ -46,7 +68,8 @@ const Stack = createNativeStackNavigator();
 export default function App() {
   const [isDark, setIsDark] = useState(true);
 
-  const theme = isDark ? CombinedDarkTheme : CombinedDefaultTheme;
+  const paperTheme = isDark ? paperThemeDark : paperThemeLight;
+  const navTheme = isDark ? navThemeDark : navThemeLight;
 
   const toggleTheme = () => {
     setIsDark(!isDark);
@@ -57,8 +80,8 @@ export default function App() {
   return (
     <ThemeContext.Provider value={themeContextValue}>
       <SafeAreaProvider>
-        <PaperProvider theme={theme}>
-          <NavigationContainer theme={theme}>
+        <PaperProvider theme={paperTheme}>
+          <NavigationContainer theme={navTheme}>
             <Stack.Navigator screenOptions={{ headerShown: false }}>
               <Stack.Screen name="Home" component={HomeScreen} />
               <Stack.Screen
@@ -67,8 +90,8 @@ export default function App() {
                 options={{
                   headerShown: true,
                   title: "Meu Perfil",
-                  headerStyle: { backgroundColor: theme.colors.surface },
-                  headerTintColor: theme.colors.onSurface
+                  headerStyle: { backgroundColor: navTheme.colors.card },
+                  headerTintColor: navTheme.colors.text
                 }}
               />
 
