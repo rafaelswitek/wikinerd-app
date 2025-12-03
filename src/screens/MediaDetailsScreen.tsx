@@ -35,17 +35,23 @@ interface CollectionResponse {
   movies: Movie[];
 }
 
+interface ProviderSection {
+  title: string;
+  data: Provider[];
+  type: "flatrate" | "buy" | "rent";
+}
+
 export default function MediaDetailsScreen({ route }: any) {
   const { slug } = route.params;
   const theme = useTheme();
-  
+
   const [movie, setMovie] = useState<Movie | null>(null);
   const [providers, setProviders] = useState<Provider[]>([]);
   const [cast, setCast] = useState<CastMember[]>([]);
   const [crew, setCrew] = useState<CrewMember[]>([]);
   const [images, setImages] = useState<MediaImage[]>([]);
   const [videos, setVideos] = useState<MediaVideo[]>([]);
-  
+
   const [collectionData, setCollectionData] = useState<CollectionResponse | null>(null);
 
   const [loading, setLoading] = useState(true);
@@ -54,10 +60,13 @@ export default function MediaDetailsScreen({ route }: any) {
   const [selectedImage, setSelectedImage] = useState<MediaImage | null>(null);
   const [isModalVisible, setIsModalVisible] = useState(false);
 
+  const [showAllProviders, setShowAllProviders] = useState(false);
+
   useEffect(() => {
     setMovie(null);
     setCollectionData(null);
     setLoading(true);
+    setShowAllProviders(false);
 
     async function fetchData() {
       try {
@@ -108,6 +117,17 @@ export default function MediaDetailsScreen({ route }: any) {
     setSelectedImage(null);
   };
 
+  const streamingProviders = providers.filter(p => p.type === 'flatrate');
+  const buyProviders = providers.filter(p => p.type === 'buy');
+  const rentProviders = providers.filter(p => p.type === 'rent');
+
+  const availableSections: ProviderSection[] = [];
+  if (streamingProviders.length > 0) availableSections.push({ title: "Streaming", data: streamingProviders, type: "flatrate" });
+  if (buyProviders.length > 0) availableSections.push({ title: "Comprar", data: buyProviders, type: "buy" });
+  if (rentProviders.length > 0) availableSections.push({ title: "Alugar", data: rentProviders, type: "rent" });
+
+  const remainingOptionsCount = Math.max(0, availableSections.length - 1);
+
   if (loading) {
     return (
       <View style={[styles.loadingContainer, { backgroundColor: theme.colors.background }]}>
@@ -130,12 +150,6 @@ export default function MediaDetailsScreen({ route }: any) {
   const poster = movie.poster_path?.tmdb
     ? `https://image.tmdb.org/t/p/w342${movie.poster_path.tmdb}`
     : null;
-
-  const uniqueProviders = providers.filter((v, i, a) => a.findIndex(t => (t.id === v.id)) === i);
-  const streamingProviders = uniqueProviders.filter(p => p.type === 'flatrate');
-  const rentBuyProviders = uniqueProviders.filter(p => p.type === 'buy' || p.type === 'rent');
-  const displayProviders = streamingProviders.length > 0 ? streamingProviders : rentBuyProviders;
-  const providerLabel = streamingProviders.length > 0 ? "Streaming" : "Aluguel / Compra";
 
   const getCrewByJob = (jobs: string[]) => {
     return crew.filter(c => jobs.includes(c.job.job)).map(c => c.name).join(", ");
@@ -176,15 +190,31 @@ export default function MediaDetailsScreen({ route }: any) {
   const renderTabButton = (key: typeof activeTab, label: string) => (
     <TouchableOpacity onPress={() => setActiveTab(key)}>
       <Text style={[
-        key === activeTab ? styles.tabActive : styles.tabInactive, 
-        { 
+        key === activeTab ? styles.tabActive : styles.tabInactive,
+        {
           backgroundColor: key === activeTab ? theme.colors.surfaceVariant : 'transparent',
-          color: key === activeTab ? theme.colors.onSurface : theme.colors.onSurfaceVariant 
+          color: key === activeTab ? theme.colors.onSurface : theme.colors.onSurfaceVariant
         }
       ]}>
         {label}
       </Text>
     </TouchableOpacity>
+  );
+
+  const renderProviderGrid = (data: Provider[]) => (
+    <View style={styles.providersGrid}>
+      {data.map((prov, index) => (
+        <View key={`${prov.id}-${prov.type}-${index}`} style={styles.providerItem}>
+          <Image
+            source={{ uri: `https://image.tmdb.org/t/p/w92${prov.logo_path.tmdb}` }}
+            style={styles.providerLogo}
+          />
+          <Text style={[styles.providerName, { color: theme.colors.onBackground }]} numberOfLines={2}>
+            {prov.name}
+          </Text>
+        </View>
+      ))}
+    </View>
   );
 
   return (
@@ -219,11 +249,11 @@ export default function MediaDetailsScreen({ route }: any) {
                 <Text style={[styles.ratingCount, { color: theme.colors.secondary }]}> ({movie.rating_tmdb_count})</Text>
               </View>
 
-              <Button 
-                mode="outlined" 
-                icon="bookmark-outline" 
-                textColor={theme.colors.onBackground} 
-                style={[styles.actionButton, { borderColor: theme.colors.outline }]} 
+              <Button
+                mode="outlined"
+                icon="bookmark-outline"
+                textColor={theme.colors.onBackground}
+                style={[styles.actionButton, { borderColor: theme.colors.outline }]}
                 onPress={() => { }}
               >
                 Quero Ver
@@ -266,7 +296,7 @@ export default function MediaDetailsScreen({ route }: any) {
                 <View style={styles.innerSection}>
                   <Text style={[styles.sectionTitle, { color: theme.colors.onBackground }]}>Filmes da Coleção</Text>
                   <Text style={[styles.providerSubTitle, { marginBottom: 8, color: theme.colors.secondary }]}>{collectionData.name}</Text>
-                  
+
                   <FlatList
                     data={collectionData.movies}
                     horizontal
@@ -281,19 +311,44 @@ export default function MediaDetailsScreen({ route }: any) {
               <View style={styles.innerSection}>
                 <View style={styles.providersHeader}>
                   <Text style={[styles.sectionTitle, { color: theme.colors.onBackground }]}>Onde Assistir</Text>
-                  <TouchableOpacity><View style={[styles.seeMoreBadge, { backgroundColor: theme.colors.surface, borderColor: theme.colors.outline }]}><Text style={[styles.seeMoreText, { color: theme.colors.onSurface }]}>Ver opções ▾</Text></View></TouchableOpacity>
-                </View>
-                <Text style={[styles.providerSubTitle, { color: theme.colors.secondary }]}>{providerLabel}</Text>
-                <View style={styles.providersGrid}>
-                  {displayProviders.length > 0 ? (
-                    displayProviders.map((prov) => (
-                      <View key={`${prov.id}-${prov.type}`} style={styles.providerItem}>
-                        <Image source={{ uri: `https://image.tmdb.org/t/p/w92${prov.logo_path.tmdb}` }} style={styles.providerLogo} />
-                        <Text style={[styles.providerName, { color: theme.colors.onBackground }]} numberOfLines={2}>{prov.name}</Text>
+
+                  {remainingOptionsCount > 0 && (
+                    <TouchableOpacity
+                      activeOpacity={0.7}
+                      onPress={() => setShowAllProviders(!showAllProviders)}
+                    >
+                      <View style={[styles.seeMoreBadge, { backgroundColor: theme.colors.surface, borderColor: theme.colors.outline }]}>
+                        <Text style={[styles.seeMoreText, { color: theme.colors.onSurface }]}>
+                          {showAllProviders ? "Mostrar menos" : `Ver mais ${remainingOptionsCount} opç${remainingOptionsCount > 1 ? 'ões' : 'ão'}`}
+                        </Text>
+                        <Icon
+                          name={showAllProviders ? "chevron-up" : "chevron-down"}
+                          size={16}
+                          color={theme.colors.onSurface}
+                          style={{ marginLeft: 4 }}
+                        />
                       </View>
-                    ))
-                  ) : (<Text style={[styles.metaText, { color: theme.colors.onSurfaceVariant }]}>Nenhum serviço encontrado.</Text>)}
+                    </TouchableOpacity>
+                  )}
                 </View>
+
+                {availableSections.length > 0 ? (
+                  availableSections.map((section, index) => {
+                    if (index === 0 || showAllProviders) {
+                      return (
+                        <View key={section.type} style={{ marginBottom: 16 }}>
+                          <Text style={[styles.providerSubTitle, { color: theme.colors.secondary }]}>{section.title}</Text>
+                          {renderProviderGrid(section.data)}
+                        </View>
+                      );
+                    }
+                    return null;
+                  })
+                ) : (
+                  <Text style={[styles.metaText, { color: theme.colors.onSurfaceVariant }]}>
+                    Nenhum serviço de streaming encontrado.
+                  </Text>
+                )}
               </View>
 
               <View style={styles.innerSection}>
@@ -539,7 +594,7 @@ const styles = StyleSheet.create({
   tabInactive: { paddingVertical: 6, paddingHorizontal: 12 },
 
   providersHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
-  seeMoreBadge: { borderWidth: 1, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 4 },
+  seeMoreBadge: { flexDirection: 'row', alignItems: 'center', borderWidth: 1, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 4 },
   seeMoreText: { fontSize: 12, fontWeight: 'bold' },
   providerSubTitle: { fontSize: 14, marginBottom: 12 },
   providersGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 16 },
@@ -548,7 +603,7 @@ const styles = StyleSheet.create({
   providerName: { fontSize: 10, textAlign: 'center', height: 30 },
 
   cardContainer: {
-    marginHorizontal: 0, 
+    marginHorizontal: 0,
     marginTop: 24,
     borderRadius: 8,
     padding: 16,
@@ -575,7 +630,7 @@ const styles = StyleSheet.create({
   linkText: { flex: 1, fontWeight: '500' },
 
   iconCircleSmall: { width: 32, height: 32, borderRadius: 16, justifyContent: 'center', alignItems: 'center' },
-  
+
   techGrid: { flexDirection: 'row', flexWrap: 'wrap', rowGap: 16 },
   techItem: { width: '50%', paddingRight: 8 },
   techLabel: { fontSize: 12, marginBottom: 2 },
