@@ -1,6 +1,6 @@
 import React from "react";
 import { View, Image, TouchableOpacity } from "react-native";
-import { Text } from "react-native-paper";
+import { Text, useTheme } from "react-native-paper";
 import { useNavigation } from "@react-navigation/native";
 import { Movie } from "../types/Movie";
 import { TvShow } from "../types/TvShow";
@@ -14,6 +14,7 @@ interface Props {
 
 export default function MediaCard({ media }: Props) {
   const navigation = useNavigation<any>();
+  const theme = useTheme();
   
   const poster = media.poster_path?.tmdb
     ? "https://image.tmdb.org/t/p/w342" + media.poster_path.tmdb
@@ -60,27 +61,27 @@ export default function MediaCard({ media }: Props) {
           width: 140,
           height: 210,
           borderRadius: 8,
-          backgroundColor: "#333",
+          backgroundColor: theme.colors.surfaceVariant,
         }}
       />
       <Text 
         variant="bodySmall" 
         numberOfLines={2} 
-        style={{ marginTop: 6, color: 'white', fontWeight: '600' }}
+        style={{ marginTop: 6, fontWeight: '600', color: theme.colors.onSurface }}
       >
         {media.title}
       </Text>
       
       <View style={{ flexDirection: "row", alignItems: "center", marginTop: 2 }}>
         {year && (
-          <Text variant="bodySmall" style={{ color: '#cbd5e1', marginRight: 6 }}>
+          <Text variant="bodySmall" style={{ color: theme.colors.secondary, marginRight: 6 }}>
             {year}
           </Text>
         )}
 
         <Text style={{ marginRight: 2, fontSize: 10 }}>⭐</Text>
 
-        <Text variant="bodySmall" style={{ color: '#cbd5e1' }}>
+        <Text variant="bodySmall" style={{ color: theme.colors.secondary }}>
           {Number(media.rating_tmdb_average).toFixed(1)}
         </Text>
       </View>

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { ScrollView, View, Image, StyleSheet, Dimensions, StatusBar, TouchableOpacity, Linking, Modal, FlatList } from "react-native";
-import { Text, ActivityIndicator, Chip, Button, Divider } from "react-native-paper";
+import { Text, ActivityIndicator, Chip, Button, Divider, useTheme } from "react-native-paper";
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { api } from "../services/api";
 import { CastMember, CrewMember, Movie, Provider } from "../types/Movie";
@@ -37,6 +37,8 @@ interface CollectionResponse {
 
 export default function MediaDetailsScreen({ route }: any) {
   const { slug } = route.params;
+  const theme = useTheme();
+  
   const [movie, setMovie] = useState<Movie | null>(null);
   const [providers, setProviders] = useState<Provider[]>([]);
   const [cast, setCast] = useState<CastMember[]>([]);
@@ -108,16 +110,16 @@ export default function MediaDetailsScreen({ route }: any) {
 
   if (loading) {
     return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#6200ee" />
+      <View style={[styles.loadingContainer, { backgroundColor: theme.colors.background }]}>
+        <ActivityIndicator size="large" color={theme.colors.primary} />
       </View>
     );
   }
 
   if (!movie) {
     return (
-      <View style={styles.loadingContainer}>
-        <Text style={{ color: "white" }}>Filme não encontrado.</Text>
+      <View style={[styles.loadingContainer, { backgroundColor: theme.colors.background }]}>
+        <Text style={{ color: theme.colors.onBackground }}>Filme não encontrado.</Text>
       </View>
     );
   }
@@ -173,27 +175,35 @@ export default function MediaDetailsScreen({ route }: any) {
 
   const renderTabButton = (key: typeof activeTab, label: string) => (
     <TouchableOpacity onPress={() => setActiveTab(key)}>
-      <Text style={activeTab === key ? styles.tabActive : styles.tabInactive}>{label}</Text>
+      <Text style={[
+        key === activeTab ? styles.tabActive : styles.tabInactive, 
+        { 
+          backgroundColor: key === activeTab ? theme.colors.surfaceVariant : 'transparent',
+          color: key === activeTab ? theme.colors.onSurface : theme.colors.onSurfaceVariant 
+        }
+      ]}>
+        {label}
+      </Text>
     </TouchableOpacity>
   );
 
   return (
     <>
-      <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 40 }}>
-        <StatusBar barStyle="light-content" backgroundColor="#060d17" />
+      <ScrollView style={[styles.container, { backgroundColor: theme.colors.background }]} contentContainerStyle={{ paddingBottom: 40 }}>
+        <StatusBar barStyle={theme.dark ? "light-content" : "dark-content"} backgroundColor={theme.colors.background} />
 
         <View style={styles.headerWrapper}>
           {backdrop && <Image source={{ uri: backdrop }} style={styles.backdrop} resizeMode="cover" />}
-          <View style={styles.overlay} />
+          <View style={[styles.overlay, { backgroundColor: theme.dark ? 'rgba(6, 13, 23, 0.7)' : 'rgba(255, 255, 255, 0.3)' }]} />
           <View style={styles.headerContent}>
             <Image source={{ uri: poster || undefined }} style={styles.poster} />
             <View style={styles.headerInfo}>
-              <Text variant="headlineSmall" style={styles.title}>{movie.title}</Text>
-              <Text variant="bodyMedium" style={styles.originalTitle}>{movie.original_title}</Text>
+              <Text variant="headlineSmall" style={[styles.title, { color: theme.colors.onBackground }]}>{movie.title}</Text>
+              <Text variant="bodyMedium" style={[styles.originalTitle, { color: theme.colors.secondary }]}>{movie.original_title}</Text>
               <View style={styles.badgesRow}>
-                <View style={styles.statusBadge}><Text style={styles.statusText}>Lançado</Text></View>
-                <Text style={styles.metaText}>📅 {getMediaYear(movie)}</Text>
-                <Text style={styles.metaText}>🕒 {formatRuntime(movie.runtime)}</Text>
+                <View style={[styles.statusBadge, { backgroundColor: theme.colors.primary }]}><Text style={styles.statusText}>Lançado</Text></View>
+                <Text style={[styles.metaText, { color: theme.colors.onBackground }]}>📅 {getMediaYear(movie)}</Text>
+                <Text style={[styles.metaText, { color: theme.colors.onBackground }]}>🕒 {formatRuntime(movie.runtime)}</Text>
                 {movie.certification && (
                   <View style={[styles.certBadge, { backgroundColor: getCertificationColor(movie.certification) }]}>
                     <Text style={styles.certText}>{movie.certification}</Text>
@@ -201,15 +211,23 @@ export default function MediaDetailsScreen({ route }: any) {
                 )}
               </View>
 
-              {movie.tagline && <Text style={styles.tagline}>"{movie.tagline}"</Text>}
+              {movie.tagline && <Text style={[styles.tagline, { color: theme.colors.onSurfaceVariant }]}>"{movie.tagline}"</Text>}
 
               <View style={styles.ratingRow}>
                 <Icon name="star" size={20} color="#4285F4" />
-                <Text style={styles.ratingScore}> {Number(movie.rating_tmdb_average).toFixed(1)}</Text>
-                <Text style={styles.ratingCount}> ({movie.rating_tmdb_count})</Text>
+                <Text style={[styles.ratingScore, { color: '#4285F4' }]}> {Number(movie.rating_tmdb_average).toFixed(1)}</Text>
+                <Text style={[styles.ratingCount, { color: theme.colors.secondary }]}> ({movie.rating_tmdb_count})</Text>
               </View>
 
-              <Button mode="outlined" icon="bookmark-outline" textColor="white" style={styles.actionButton} onPress={() => { }}>Quero Ver</Button>
+              <Button 
+                mode="outlined" 
+                icon="bookmark-outline" 
+                textColor={theme.colors.onBackground} 
+                style={[styles.actionButton, { borderColor: theme.colors.outline }]} 
+                onPress={() => { }}
+              >
+                Quero Ver
+              </Button>
             </View>
           </View>
         </View>
@@ -219,18 +237,18 @@ export default function MediaDetailsScreen({ route }: any) {
           <Button mode="contained" icon="thumb-up" buttonColor="#22c55e" style={styles.gridButton}>Gostei</Button>
         </View>
         <View style={[styles.actionsBar, { marginTop: 8 }]}>
-          <Button mode="outlined" icon="thumb-down" textColor="#cbd5e1" style={[styles.gridButton, { borderColor: '#334155' }]}>Não Gostei</Button>
-          <Button mode="outlined" icon="star-outline" textColor="#cbd5e1" style={[styles.gridButton, { borderColor: '#334155' }]}>Favorito</Button>
+          <Button mode="outlined" icon="thumb-down" textColor={theme.colors.onSurfaceVariant} style={[styles.gridButton, { borderColor: theme.colors.outline }]}>Não Gostei</Button>
+          <Button mode="outlined" icon="star-outline" textColor={theme.colors.onSurfaceVariant} style={[styles.gridButton, { borderColor: theme.colors.outline }]}>Favorito</Button>
         </View>
 
         <View style={styles.genresContainer}>
           {movie.genres?.map((g) => (
-            <Chip key={g.id} style={styles.genreChip} textStyle={{ color: '#cbd5e1', fontSize: 12 }}>{g.name}</Chip>
+            <Chip key={g.id} style={[styles.genreChip, { backgroundColor: theme.colors.surfaceVariant }]} textStyle={{ color: theme.colors.onSurfaceVariant, fontSize: 12 }}>{g.name}</Chip>
           ))}
         </View>
 
-        <View style={styles.section}>
-          <View style={styles.tabBar}>
+        <View style={[styles.section, { borderTopColor: theme.colors.outlineVariant }]}>
+          <View style={[styles.tabBar, { backgroundColor: theme.colors.surface }]}>
             {renderTabButton("about", "Sobre")}
             {renderTabButton("cast", "Elenco")}
             {renderTabButton("crew", "Equipe")}
@@ -241,13 +259,13 @@ export default function MediaDetailsScreen({ route }: any) {
 
           {activeTab === "about" && (
             <>
-              <Text style={styles.sectionTitle}>Sinopse</Text>
-              <Text style={styles.bodyText}>{movie.overview}</Text>
+              <Text style={[styles.sectionTitle, { color: theme.colors.onBackground }]}>Sinopse</Text>
+              <Text style={[styles.bodyText, { color: theme.colors.onSurfaceVariant }]}>{movie.overview}</Text>
 
               {collectionData && (
                 <View style={styles.innerSection}>
-                  <Text style={styles.sectionTitle}>Filmes da Coleção</Text>
-                  <Text style={[styles.providerSubTitle, { marginBottom: 8 }]}>{collectionData.name}</Text>
+                  <Text style={[styles.sectionTitle, { color: theme.colors.onBackground }]}>Filmes da Coleção</Text>
+                  <Text style={[styles.providerSubTitle, { marginBottom: 8, color: theme.colors.secondary }]}>{collectionData.name}</Text>
                   
                   <FlatList
                     data={collectionData.movies}
@@ -262,76 +280,76 @@ export default function MediaDetailsScreen({ route }: any) {
 
               <View style={styles.innerSection}>
                 <View style={styles.providersHeader}>
-                  <Text style={styles.sectionTitle}>Onde Assistir</Text>
-                  <TouchableOpacity><View style={styles.seeMoreBadge}><Text style={styles.seeMoreText}>Ver opções ▾</Text></View></TouchableOpacity>
+                  <Text style={[styles.sectionTitle, { color: theme.colors.onBackground }]}>Onde Assistir</Text>
+                  <TouchableOpacity><View style={[styles.seeMoreBadge, { backgroundColor: theme.colors.surface, borderColor: theme.colors.outline }]}><Text style={[styles.seeMoreText, { color: theme.colors.onSurface }]}>Ver opções ▾</Text></View></TouchableOpacity>
                 </View>
-                <Text style={styles.providerSubTitle}>{providerLabel}</Text>
+                <Text style={[styles.providerSubTitle, { color: theme.colors.secondary }]}>{providerLabel}</Text>
                 <View style={styles.providersGrid}>
                   {displayProviders.length > 0 ? (
                     displayProviders.map((prov) => (
                       <View key={`${prov.id}-${prov.type}`} style={styles.providerItem}>
                         <Image source={{ uri: `https://image.tmdb.org/t/p/w92${prov.logo_path.tmdb}` }} style={styles.providerLogo} />
-                        <Text style={styles.providerName} numberOfLines={2}>{prov.name}</Text>
+                        <Text style={[styles.providerName, { color: theme.colors.onBackground }]} numberOfLines={2}>{prov.name}</Text>
                       </View>
                     ))
-                  ) : (<Text style={styles.metaText}>Nenhum serviço encontrado.</Text>)}
+                  ) : (<Text style={[styles.metaText, { color: theme.colors.onSurfaceVariant }]}>Nenhum serviço encontrado.</Text>)}
                 </View>
               </View>
 
               <View style={styles.innerSection}>
-                <Text style={styles.sectionTitle}>Informações Técnicas</Text>
+                <Text style={[styles.sectionTitle, { color: theme.colors.onBackground }]}>Informações Técnicas</Text>
                 <View style={styles.techGrid}>
-                  <View style={styles.techItem}><Text style={styles.techLabel}>País de Origem</Text><Text style={styles.techValue}>Estados Unidos</Text></View>
-                  <View style={styles.techItem}><Text style={styles.techLabel}>Orçamento</Text><Text style={styles.techValue}>{formatCurrency(movie.budget)}</Text></View>
-                  <View style={styles.techItem}><Text style={styles.techLabel}>Bilheteria</Text><Text style={styles.techValue}>{formatCurrency(movie.revenue)}</Text></View>
-                  <View style={styles.techItem}><Text style={styles.techLabel}>Status</Text><Text style={styles.techValue}>{movie.status}</Text></View>
-                  <View style={styles.techItem}><Text style={styles.techLabel}>Lançamento</Text><Text style={styles.techValue}>{formatDate(movie.release_date)}</Text></View>
-                  <View style={styles.techItem}><Text style={styles.techLabel}>Duração</Text><Text style={styles.techValue}>{formatRuntime(movie.runtime)}</Text></View>
+                  <View style={styles.techItem}><Text style={[styles.techLabel, { color: theme.colors.secondary }]}>País de Origem</Text><Text style={[styles.techValue, { color: theme.colors.onBackground }]}>Estados Unidos</Text></View>
+                  <View style={styles.techItem}><Text style={[styles.techLabel, { color: theme.colors.secondary }]}>Orçamento</Text><Text style={[styles.techValue, { color: theme.colors.onBackground }]}>{formatCurrency(movie.budget)}</Text></View>
+                  <View style={styles.techItem}><Text style={[styles.techLabel, { color: theme.colors.secondary }]}>Bilheteria</Text><Text style={[styles.techValue, { color: theme.colors.onBackground }]}>{formatCurrency(movie.revenue)}</Text></View>
+                  <View style={styles.techItem}><Text style={[styles.techLabel, { color: theme.colors.secondary }]}>Status</Text><Text style={[styles.techValue, { color: theme.colors.onBackground }]}>{movie.status}</Text></View>
+                  <View style={styles.techItem}><Text style={[styles.techLabel, { color: theme.colors.secondary }]}>Lançamento</Text><Text style={[styles.techValue, { color: theme.colors.onBackground }]}>{formatDate(movie.release_date)}</Text></View>
+                  <View style={styles.techItem}><Text style={[styles.techLabel, { color: theme.colors.secondary }]}>Duração</Text><Text style={[styles.techValue, { color: theme.colors.onBackground }]}>{formatRuntime(movie.runtime)}</Text></View>
                 </View>
               </View>
 
-              <View style={styles.cardContainer}>
-                <Text style={styles.cardTitle}>Classificação Etária</Text>
+              <View style={[styles.cardContainer, { backgroundColor: theme.colors.surface, borderColor: theme.colors.outlineVariant }]}>
+                <Text style={[styles.cardTitle, { color: theme.colors.onSurface }]}>Classificação Etária</Text>
                 <View style={styles.contentRow}>
                   <View style={[styles.largeCertBadge, { backgroundColor: movie.certification ? getCertificationColor(movie.certification) : "#666" }]}>
                     <Text style={styles.largeCertText}>{movie.certification || "?"}</Text>
                   </View>
                   <View style={{ flex: 1, marginLeft: 12 }}>
-                    <Text style={styles.infoTitle}>ClassInd</Text>
-                    <Text style={styles.infoSubtitle}>{movie.certification ? `${movie.certification} anos` : "Não informado"}</Text>
+                    <Text style={[styles.infoTitle, { color: theme.colors.onSurface }]}>ClassInd</Text>
+                    <Text style={[styles.infoSubtitle, { color: theme.colors.secondary }]}>{movie.certification ? `${movie.certification} anos` : "Não informado"}</Text>
                   </View>
-                  <View style={styles.countryBadge}><Text style={styles.countryText}>Brasil</Text></View>
+                  <View style={[styles.countryBadge, { backgroundColor: theme.colors.surfaceVariant }]}><Text style={[styles.countryText, { color: theme.colors.onSurfaceVariant }]}>Brasil</Text></View>
                 </View>
               </View>
 
-              <View style={styles.cardContainer}>
-                <Text style={styles.cardTitle}>Notas da Crítica</Text>
+              <View style={[styles.cardContainer, { backgroundColor: theme.colors.surface, borderColor: theme.colors.outlineVariant }]}>
+                <Text style={[styles.cardTitle, { color: theme.colors.onSurface }]}>Notas da Crítica</Text>
                 <View style={styles.contentRow}>
                   <View style={[styles.scoreBox, { backgroundColor: tmdbScore >= 7 ? "#22c55e" : tmdbScore >= 5 ? "#eab308" : "#ef4444" }]}>
                     <Text style={styles.scoreText}>{tmdbScore.toFixed(1)}</Text>
                   </View>
                   <View style={{ flex: 1, marginLeft: 12 }}>
-                    <Text style={styles.infoTitle}>TMDb</Text>
-                    <Text style={styles.infoSubtitle}>{tmdbScore >= 7 ? "Favorável" : "Misto"}</Text>
+                    <Text style={[styles.infoTitle, { color: theme.colors.onSurface }]}>TMDb</Text>
+                    <Text style={[styles.infoSubtitle, { color: theme.colors.secondary }]}>{tmdbScore >= 7 ? "Favorável" : "Misto"}</Text>
                   </View>
-                  <Icon name="open-in-new" size={20} color="#94a3b8" />
+                  <Icon name="open-in-new" size={20} color={theme.colors.onSurfaceVariant} />
                 </View>
-                <Divider style={styles.divider} />
+                <Divider style={[styles.divider, { backgroundColor: theme.colors.outlineVariant }]} />
                 <View style={{ alignItems: 'center' }}>
-                  <Text style={styles.infoSubtitle}>Média da Crítica</Text>
-                  <Text style={styles.bigScore}>{(tmdbScore / 2).toFixed(1)}/5</Text>
+                  <Text style={[styles.infoSubtitle, { color: theme.colors.secondary }]}>Média da Crítica</Text>
+                  <Text style={[styles.bigScore, { color: theme.colors.onSurface }]}>{(tmdbScore / 2).toFixed(1)}/5</Text>
                 </View>
               </View>
 
-              <View style={styles.cardContainer}>
-                <Text style={styles.cardTitle}>Principais Créditos</Text>
-                {photography && (<View style={styles.crewRow}><View style={styles.iconCircle}><Icon name="filmstrip" size={20} color="#3b82f6" /></View><View style={styles.crewInfo}><Text style={styles.infoSubtitle}>Fotografia</Text><Text style={styles.infoTitle}>{photography}</Text></View></View>)}
-                {music && (<><Divider style={styles.divider} /><View style={styles.crewRow}><View style={styles.iconCircle}><Icon name="music-note" size={20} color="#3b82f6" /></View><View style={styles.crewInfo}><Text style={styles.infoSubtitle}>Trilha Sonora</Text><Text style={styles.infoTitle}>{music}</Text></View></View></>)}
-                {producers && (<><Divider style={styles.divider} /><View style={styles.crewRow}><View style={styles.iconCircle}><Icon name="account-group" size={20} color="#3b82f6" /></View><View style={styles.crewInfo}><Text style={styles.infoSubtitle}>Produção</Text><Text style={styles.infoTitle}>{producers}</Text></View></View></>)}
+              <View style={[styles.cardContainer, { backgroundColor: theme.colors.surface, borderColor: theme.colors.outlineVariant }]}>
+                <Text style={[styles.cardTitle, { color: theme.colors.onSurface }]}>Principais Créditos</Text>
+                {photography && (<View style={styles.crewRow}><View style={styles.iconCircle}><Icon name="filmstrip" size={20} color="#3b82f6" /></View><View style={styles.crewInfo}><Text style={[styles.infoSubtitle, { color: theme.colors.secondary }]}>Fotografia</Text><Text style={[styles.infoTitle, { color: theme.colors.onSurface }]}>{photography}</Text></View></View>)}
+                {music && (<><Divider style={[styles.divider, { backgroundColor: theme.colors.outlineVariant }]} /><View style={styles.crewRow}><View style={styles.iconCircle}><Icon name="music-note" size={20} color="#3b82f6" /></View><View style={styles.crewInfo}><Text style={[styles.infoSubtitle, { color: theme.colors.secondary }]}>Trilha Sonora</Text><Text style={[styles.infoTitle, { color: theme.colors.onSurface }]}>{music}</Text></View></View></>)}
+                {producers && (<><Divider style={[styles.divider, { backgroundColor: theme.colors.outlineVariant }]} /><View style={styles.crewRow}><View style={styles.iconCircle}><Icon name="account-group" size={20} color="#3b82f6" /></View><View style={styles.crewInfo}><Text style={[styles.infoSubtitle, { color: theme.colors.secondary }]}>Produção</Text><Text style={[styles.infoTitle, { color: theme.colors.onSurface }]}>{producers}</Text></View></View></>)}
               </View>
 
-              <View style={styles.cardContainer}>
-                <Text style={styles.cardTitle}>Links Externos</Text>
+              <View style={[styles.cardContainer, { backgroundColor: theme.colors.surface, borderColor: theme.colors.outlineVariant }]}>
+                <Text style={[styles.cardTitle, { color: theme.colors.onSurface }]}>Links Externos</Text>
                 {movie.external_ids?.map((item) => {
                   const { icon, color, label, url } = getSocialData(item.platform);
                   return (
@@ -343,8 +361,8 @@ export default function MediaDetailsScreen({ route }: any) {
                       <View style={[styles.linkIconBox, { backgroundColor: color }]}>
                         <Icon name={icon} size={16} color="white" />
                       </View>
-                      <Text style={styles.linkText}>{label}</Text>
-                      <Icon name="open-in-new" size={16} color="#94a3b8" />
+                      <Text style={[styles.linkText, { color: theme.colors.onSurface }]}>{label}</Text>
+                      <Icon name="open-in-new" size={16} color={theme.colors.onSurfaceVariant} />
                     </TouchableOpacity>
                   );
                 })}
@@ -352,9 +370,9 @@ export default function MediaDetailsScreen({ route }: any) {
 
               {movie.keywords && movie.keywords.length > 0 && (
                 <View style={styles.innerSection}>
-                  <Text style={styles.sectionTitle}>Palavras-chave</Text>
+                  <Text style={[styles.sectionTitle, { color: theme.colors.onBackground }]}>Palavras-chave</Text>
                   <View style={styles.keywordContainer}>
-                    {movie.keywords.map(k => (<View key={k.id} style={styles.keywordBadge}><Text style={styles.keywordText}>{k.name}</Text></View>))}
+                    {movie.keywords.map(k => (<View key={k.id} style={[styles.keywordBadge, { borderColor: theme.colors.outline }]}><Text style={[styles.keywordText, { color: theme.colors.onBackground }]}>{k.name}</Text></View>))}
                   </View>
                 </View>
               )}
@@ -363,16 +381,16 @@ export default function MediaDetailsScreen({ route }: any) {
 
           {activeTab === "cast" && (
             <View>
-              <Text style={styles.sectionTitle}>Elenco Principal</Text>
+              <Text style={[styles.sectionTitle, { color: theme.colors.onBackground }]}>Elenco Principal</Text>
               {cast.map((person) => (
-                <View key={person.id} style={styles.personRow}>
+                <View key={person.id} style={[styles.personRow, { borderBottomColor: theme.colors.outlineVariant }]}>
                   <Image
                     source={{ uri: person.profile_path?.tmdb ? `https://image.tmdb.org/t/p/w185${person.profile_path.tmdb}` : undefined }}
-                    style={styles.avatar}
+                    style={[styles.avatar, { backgroundColor: theme.colors.surfaceVariant }]}
                   />
                   <View style={styles.personInfo}>
-                    <Text style={styles.personName}>{person.name}</Text>
-                    <Text style={styles.personRole}>{person.character}</Text>
+                    <Text style={[styles.personName, { color: theme.colors.onBackground }]}>{person.name}</Text>
+                    <Text style={[styles.personRole, { color: theme.colors.secondary }]}>{person.character}</Text>
                   </View>
                 </View>
               ))}
@@ -381,17 +399,17 @@ export default function MediaDetailsScreen({ route }: any) {
 
           {activeTab === "crew" && (
             <View>
-              <Text style={styles.sectionTitle}>Equipe Técnica</Text>
+              <Text style={[styles.sectionTitle, { color: theme.colors.onBackground }]}>Equipe Técnica</Text>
               {crew.map((person) => (
-                <View key={person.id + person.job.job} style={styles.personRow}>
+                <View key={person.id + person.job.job} style={[styles.personRow, { borderBottomColor: theme.colors.outlineVariant }]}>
                   <Image
                     source={{ uri: person.profile_path?.tmdb ? `https://image.tmdb.org/t/p/w185${person.profile_path.tmdb}` : undefined }}
-                    style={styles.avatar}
+                    style={[styles.avatar, { backgroundColor: theme.colors.surfaceVariant }]}
                   />
                   <View style={styles.personInfo}>
-                    <Text style={styles.personName}>{person.name}</Text>
-                    <Text style={styles.personRole}>{person.job.job}</Text>
-                    <Text style={styles.personDept}>{person.job.department}</Text>
+                    <Text style={[styles.personName, { color: theme.colors.onBackground }]}>{person.name}</Text>
+                    <Text style={[styles.personRole, { color: theme.colors.secondary }]}>{person.job.job}</Text>
+                    <Text style={[styles.personDept, { color: theme.colors.tertiary }]}>{person.job.department}</Text>
                   </View>
                 </View>
               ))}
@@ -400,13 +418,13 @@ export default function MediaDetailsScreen({ route }: any) {
 
           {activeTab === "images" && (
             <View>
-              <Text style={styles.sectionTitle}>Imagens</Text>
-              {images.length === 0 && <Text style={styles.metaText}>Nenhuma imagem encontrada.</Text>}
+              <Text style={[styles.sectionTitle, { color: theme.colors.onBackground }]}>Imagens</Text>
+              {images.length === 0 && <Text style={[styles.metaText, { color: theme.colors.onSurfaceVariant }]}>Nenhuma imagem encontrada.</Text>}
               <View style={styles.imagesGrid}>
                 {images.map((img) => (
                   <TouchableOpacity
                     key={img.id}
-                    style={styles.galleryImageContainer}
+                    style={[styles.galleryImageContainer, { backgroundColor: theme.colors.surfaceVariant }]}
                     onPress={() => openImageModal(img)}
                     activeOpacity={0.8}
                   >
@@ -428,29 +446,29 @@ export default function MediaDetailsScreen({ route }: any) {
 
           {activeTab === "videos" && (
             <View>
-              <Text style={styles.sectionTitle}>Vídeos</Text>
-              {videos.length === 0 && <Text style={styles.metaText}>Nenhum vídeo disponível no momento.</Text>}
+              <Text style={[styles.sectionTitle, { color: theme.colors.onBackground }]}>Vídeos</Text>
+              {videos.length === 0 && <Text style={[styles.metaText, { color: theme.colors.onSurfaceVariant }]}>Nenhum vídeo disponível no momento.</Text>}
               {videos.map((vid) => (
                 <TouchableOpacity
                   key={vid.id}
-                  style={styles.videoItem}
+                  style={[styles.videoItem, { backgroundColor: theme.colors.surface }]}
                   onPress={() => vid.site === "YouTube" && Linking.openURL(`https://www.youtube.com/watch?v=${vid.key}`)}
                 >
                   <Image
                     source={{ uri: `https://img.youtube.com/vi/${vid.key}/0.jpg` }}
-                    style={styles.videoThumbnail}
+                    style={[styles.videoThumbnail, { backgroundColor: theme.colors.surfaceVariant }]}
                   />
                   <View style={styles.videoInfo}>
-                    <Text style={styles.videoName} numberOfLines={2}>{vid.name}</Text>
-                    <Text style={styles.videoType}>{vid.type}</Text>
+                    <Text style={[styles.videoName, { color: theme.colors.onSurface }]} numberOfLines={2}>{vid.name}</Text>
+                    <Text style={[styles.videoType, { color: theme.colors.secondary }]}>{vid.type}</Text>
                   </View>
-                  <Icon name="play-circle-outline" size={32} color="#cbd5e1" />
+                  <Icon name="play-circle-outline" size={32} color={theme.colors.onSurfaceVariant} />
                 </TouchableOpacity>
               ))}
             </View>
           )}
 
-          {activeTab === "reviews" && <Text style={styles.metaText}>Nenhuma avaliação disponível no momento.</Text>}
+          {activeTab === "reviews" && <Text style={[styles.metaText, { color: theme.colors.onSurfaceVariant }]}>Nenhuma avaliação disponível no momento.</Text>}
 
         </View>
       </ScrollView>
@@ -485,102 +503,93 @@ export default function MediaDetailsScreen({ route }: any) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#060d17" },
-  loadingContainer: { flex: 1, backgroundColor: "#060d17", justifyContent: "center", alignItems: "center" },
+  container: { flex: 1 },
+  loadingContainer: { flex: 1, justifyContent: "center", alignItems: "center" },
 
   headerWrapper: { position: "relative", width: width },
   backdrop: { width: width, height: 450, opacity: 0.6 },
-  overlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(6, 13, 23, 0.6)' },
+  overlay: { ...StyleSheet.absoluteFillObject },
   headerContent: { position: 'absolute', bottom: 20, left: 16, right: 16, flexDirection: 'row', alignItems: 'flex-end' },
   poster: { width: 120, height: 180, borderRadius: 8, marginRight: 16, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' },
   headerInfo: { flex: 1, justifyContent: 'flex-end' },
-  title: { color: "#fff", fontWeight: "bold", marginBottom: 2 },
-  originalTitle: { color: "#94a3b8", marginBottom: 8 },
+  title: { fontWeight: "bold", marginBottom: 2 },
+  originalTitle: { marginBottom: 8 },
   badgesRow: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 8, marginBottom: 8 },
-  statusBadge: { backgroundColor: '#3b82f6', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 },
+  statusBadge: { paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 },
   statusText: { color: 'white', fontSize: 10, fontWeight: 'bold' },
-  metaText: { color: '#e2e8f0', fontSize: 12 },
+  metaText: { fontSize: 12 },
   certBadge: { paddingHorizontal: 4, paddingVertical: 1, borderRadius: 3 },
   certText: { color: 'white', fontSize: 10, fontWeight: 'bold' },
-  tagline: { color: '#cbd5e1', fontStyle: 'italic', fontSize: 12, marginBottom: 8 },
+  tagline: { fontStyle: 'italic', fontSize: 12, marginBottom: 8 },
   ratingRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 10 },
-  ratingScore: { color: '#4285F4', fontWeight: 'bold', fontSize: 16 },
-  ratingCount: { color: '#94a3b8', fontSize: 12 },
-  actionButton: { borderColor: '#475569', borderRadius: 4, width: '100%' },
+  ratingScore: { fontWeight: 'bold', fontSize: 16 },
+  ratingCount: { fontSize: 12 },
+  actionButton: { borderRadius: 4, width: '100%' },
   actionsBar: { flexDirection: 'row', paddingHorizontal: 16, gap: 10 },
   gridButton: { flex: 1, borderRadius: 4 },
   genresContainer: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, paddingHorizontal: 16, marginTop: 16 },
-  genreChip: { backgroundColor: '#1e293b', height: 32 },
-  section: { padding: 16, borderTopWidth: 1, borderTopColor: '#1e293b', marginTop: 16 },
+  genreChip: { height: 32 },
+  section: { padding: 16, borderTopWidth: 1, marginTop: 16 },
   innerSection: { marginTop: 24 },
-  sectionTitle: { color: 'white', fontSize: 18, fontWeight: 'bold', marginBottom: 12 },
-  bodyText: { color: '#cbd5e1', lineHeight: 22, textAlign: 'justify' },
+  sectionTitle: { fontSize: 18, fontWeight: 'bold', marginBottom: 12 },
+  bodyText: { lineHeight: 22, textAlign: 'justify' },
 
-  tabBar: { flexDirection: 'row', backgroundColor: '#0f172a', padding: 4, borderRadius: 8, marginBottom: 16, flexWrap: 'wrap', rowGap: 4 },
-  tabActive: { backgroundColor: '#1e293b', color: 'white', paddingVertical: 6, paddingHorizontal: 12, borderRadius: 6, fontWeight: 'bold', overflow: 'hidden' },
-  tabInactive: { color: '#94a3b8', paddingVertical: 6, paddingHorizontal: 12 },
+  tabBar: { flexDirection: 'row', padding: 4, borderRadius: 8, marginBottom: 16, flexWrap: 'wrap', rowGap: 4 },
+  tabActive: { paddingVertical: 6, paddingHorizontal: 12, borderRadius: 6, fontWeight: 'bold', overflow: 'hidden' },
+  tabInactive: { paddingVertical: 6, paddingHorizontal: 12 },
 
   providersHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
-  seeMoreBadge: { backgroundColor: '#0f172a', borderWidth: 1, borderColor: '#334155', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 4 },
-  seeMoreText: { color: '#cbd5e1', fontSize: 12, fontWeight: 'bold' },
-  providerSubTitle: { color: '#94a3b8', fontSize: 14, marginBottom: 12 },
+  seeMoreBadge: { borderWidth: 1, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 4 },
+  seeMoreText: { fontSize: 12, fontWeight: 'bold' },
+  providerSubTitle: { fontSize: 14, marginBottom: 12 },
   providersGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 16 },
   providerItem: { width: 60, alignItems: 'center', marginBottom: 8 },
   providerLogo: { width: 50, height: 50, borderRadius: 8, marginBottom: 4, backgroundColor: '#333' },
-  providerName: { color: '#e2e8f0', fontSize: 10, textAlign: 'center', height: 30 },
+  providerName: { fontSize: 10, textAlign: 'center', height: 30 },
 
   cardContainer: {
-    backgroundColor: '#0f172a',
     marginHorizontal: 0, 
     marginTop: 24,
     borderRadius: 8,
     padding: 16,
-    borderWidth: 1,
-    borderColor: '#1e293b'
+    borderWidth: 1
   },
-  cardTitle: { color: 'white', fontSize: 16, fontWeight: 'bold', marginBottom: 16 },
+  cardTitle: { fontSize: 16, fontWeight: 'bold', marginBottom: 16 },
   contentRow: { flexDirection: 'row', alignItems: 'center' },
   largeCertBadge: { width: 40, height: 40, borderRadius: 6, justifyContent: 'center', alignItems: 'center' },
   largeCertText: { color: 'white', fontWeight: 'bold', fontSize: 16 },
-  infoTitle: { color: 'white', fontWeight: 'bold', fontSize: 14 },
-  infoSubtitle: { color: '#94a3b8', fontSize: 12 },
-  countryBadge: { backgroundColor: '#1e293b', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 12 },
-  countryText: { color: '#cbd5e1', fontSize: 10 },
+  infoTitle: { fontWeight: 'bold', fontSize: 14 },
+  infoSubtitle: { fontSize: 12 },
+  countryBadge: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 12 },
+  countryText: { fontSize: 10 },
   scoreBox: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 4 },
   scoreText: { color: 'white', fontWeight: 'bold', fontSize: 14 },
-  bigScore: { color: 'white', fontSize: 24, fontWeight: 'bold', marginTop: 4 },
-  divider: { backgroundColor: '#334155', marginVertical: 12 },
+  bigScore: { fontSize: 24, fontWeight: 'bold', marginTop: 4 },
+  divider: { marginVertical: 12 },
   crewRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 4 },
   iconCircle: { width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(59, 130, 246, 0.1)', justifyContent: 'center', alignItems: 'center', marginRight: 12 },
   crewInfo: { flex: 1 },
 
   linkRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 12 },
   linkIconBox: { width: 24, height: 24, borderRadius: 4, justifyContent: 'center', alignItems: 'center', marginRight: 12 },
-  linkText: { color: 'white', flex: 1, fontWeight: '500' },
+  linkText: { flex: 1, fontWeight: '500' },
 
-  iconCircleSmall: { width: 32, height: 32, borderRadius: 16, backgroundColor: '#1e293b', justifyContent: 'center', alignItems: 'center' },
+  iconCircleSmall: { width: 32, height: 32, borderRadius: 16, justifyContent: 'center', alignItems: 'center' },
   
-  collectionContainer: { position: 'relative', borderRadius: 8, overflow: 'hidden', height: 380, backgroundColor: '#000' },
-  collectionImage: { width: '100%', height: '100%', opacity: 0.8 },
-  collectionOverlay: { ...StyleSheet.absoluteFillObject, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 10 },
-  arrowButton: { width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' },
-  collectionTitleContainer: { position: 'absolute', top: 20, left: 0, right: 0, alignItems: 'center' },
-  collectionTitleText: { color: 'white', fontSize: 24, fontWeight: 'bold', textAlign: 'center', textShadowColor: 'rgba(0,0,0,0.8)', textShadowOffset: { width: 1, height: 1 }, textShadowRadius: 5 },
-
   techGrid: { flexDirection: 'row', flexWrap: 'wrap', rowGap: 16 },
   techItem: { width: '50%', paddingRight: 8 },
-  techLabel: { color: '#94a3b8', fontSize: 12, marginBottom: 2 },
-  techValue: { color: 'white', fontSize: 14, fontWeight: '500' },
+  techLabel: { fontSize: 12, marginBottom: 2 },
+  techValue: { fontSize: 14, fontWeight: '500' },
   keywordContainer: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  keywordBadge: { backgroundColor: 'transparent', borderWidth: 1, borderColor: '#334155', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 },
-  keywordText: { color: '#e2e8f0', fontSize: 12 },
+  keywordBadge: { backgroundColor: 'transparent', borderWidth: 1, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 },
+  keywordText: { fontSize: 12 },
 
-  personRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 16, borderBottomWidth: 1, borderBottomColor: '#1e293b', paddingBottom: 16 },
-  avatar: { width: 50, height: 50, borderRadius: 25, backgroundColor: '#333', marginRight: 16 },
+  personRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 16, borderBottomWidth: 1, paddingBottom: 16 },
+  avatar: { width: 50, height: 50, borderRadius: 25, marginRight: 16 },
   personInfo: { flex: 1 },
-  personName: { color: 'white', fontSize: 16, fontWeight: 'bold' },
-  personRole: { color: '#94a3b8', fontSize: 14 },
-  personDept: { color: '#64748b', fontSize: 12 },
+  personName: { fontSize: 16, fontWeight: 'bold' },
+  personRole: { fontSize: 14 },
+  personDept: { fontSize: 12 },
 
   imagesGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   galleryImageContainer: {
@@ -588,7 +597,6 @@ const styles = StyleSheet.create({
     height: 120,
     borderRadius: 4,
     marginBottom: 8,
-    backgroundColor: '#333',
     position: 'relative',
     overflow: 'hidden',
   },
@@ -635,9 +643,9 @@ const styles = StyleSheet.create({
     zIndex: 10,
   },
 
-  videoItem: { flexDirection: 'row', alignItems: 'center', marginBottom: 16, backgroundColor: '#0f172a', borderRadius: 8, padding: 8 },
-  videoThumbnail: { width: 120, height: 68, borderRadius: 4, backgroundColor: '#333' },
+  videoItem: { flexDirection: 'row', alignItems: 'center', marginBottom: 16, borderRadius: 8, padding: 8 },
+  videoThumbnail: { width: 120, height: 68, borderRadius: 4 },
   videoInfo: { flex: 1, marginLeft: 12 },
-  videoName: { color: 'white', fontSize: 14, fontWeight: 'bold', marginBottom: 4 },
-  videoType: { color: '#94a3b8', fontSize: 12 },
+  videoName: { fontSize: 14, fontWeight: 'bold', marginBottom: 4 },
+  videoType: { fontSize: 12 },
 });

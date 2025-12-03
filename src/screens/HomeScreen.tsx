@@ -6,25 +6,28 @@ import MediaTabs from "../components/MediaTabs";
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import Header from "../components/Header";
 import { useNavigation } from "@react-navigation/native";
+import { useTheme } from "react-native-paper";
 
 const Tab = createBottomTabNavigator();
 const Drawer = createDrawerNavigator();
 
 function MainTabs() {
+  const theme = useTheme();
+  
   return (
-    <View style={{ flex: 1, backgroundColor: "#ffffff" }}>
+    <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
       <Header />
       <Tab.Navigator
         initialRouteName="Filmes"
         screenOptions={({ route }) => ({
           headerShown: false,
           tabBarStyle: {
-            backgroundColor: "#ffffff",
+            backgroundColor: theme.colors.surface,
             borderTopWidth: 0,
             elevation: 5,
           },
-          tabBarActiveTintColor: '#6200ee',
-          tabBarInactiveTintColor: '#6b7280',
+          tabBarActiveTintColor: theme.colors.primary,
+          tabBarInactiveTintColor: theme.colors.onSurfaceVariant,
           tabBarIcon: ({ color, size }) => {
             let iconName: string;
             switch (route.name) {
@@ -51,22 +54,26 @@ function MainTabs() {
 
 function CustomDrawerContent(props: any) {
   const navigation = useNavigation<any>();
+  const theme = useTheme();
 
   return (
-    <DrawerContentScrollView {...props}>
+    <DrawerContentScrollView {...props} style={{ backgroundColor: theme.colors.surface }}>
       <DrawerItem
         label="Meu Perfil"
-        icon={({ color, size }) => <Icon name="account" color={color} size={size} />}
+        labelStyle={{ color: theme.colors.onSurface }}
+        icon={({ size }) => <Icon name="account" color={theme.colors.onSurface} size={size} />}
         onPress={() => navigation.navigate("Profile")}
       />
       <DrawerItem
         label="Configurações"
-        icon={({ color, size }) => <Icon name="cog" color={color} size={size} />}
+        labelStyle={{ color: theme.colors.onSurface }}
+        icon={({ size }) => <Icon name="cog" color={theme.colors.onSurface} size={size} />}
         onPress={() => console.log("Configurações")}
       />
       <DrawerItem
         label="Sair"
-        icon={({ color, size }) => <Icon name="logout" color={color} size={size} />}
+        labelStyle={{ color: theme.colors.onSurface }}
+        icon={({ size }) => <Icon name="logout" color={theme.colors.onSurface} size={size} />}
         onPress={() => console.log("Sair")}
       />
     </DrawerContentScrollView>
@@ -74,9 +81,10 @@ function CustomDrawerContent(props: any) {
 }
 
 export default function HomeScreen() {
+  const theme = useTheme();
   return (
     <Drawer.Navigator 
-      screenOptions={{ headerShown: false }} 
+      screenOptions={{ headerShown: false, drawerStyle: { backgroundColor: theme.colors.surface } }} 
       drawerContent={(props) => <CustomDrawerContent {...props} />}
     >
       <Drawer.Screen name="MainTabs" component={MainTabs} />
