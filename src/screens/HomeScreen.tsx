@@ -9,6 +9,7 @@ import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import MediaTabs from "../components/MediaTabs";
 import Header from "../components/Header";
 import { AuthContext } from "../context/AuthContext";
+import MoviesScreen from "./MoviesScreen";
 
 const Tab = createBottomTabNavigator();
 const Drawer = createDrawerNavigator();
@@ -114,10 +115,6 @@ function CustomDrawerContent(props: DrawerContentComponentProps) {
   const navigation = useNavigation<any>();
   const { user, signOut } = useContext(AuthContext);
 
-  const handleClose = () => {
-    navigation.dispatch(DrawerActions.closeDrawer());
-  };
-
   return (
     <View style={{ flex: 1, backgroundColor: '#02060e' }}>
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 16, paddingTop: 40 }}>
@@ -144,7 +141,17 @@ function CustomDrawerContent(props: DrawerContentComponentProps) {
       <ScrollView contentContainerStyle={{ paddingBottom: 20 }}>
         {/* Mídia */}
         <DrawerSectionTitle title="Mídia" />
-        <CustomDrawerItem label="Filmes" icon="movie-open-outline" onPress={() => navigation.navigate("MainTabs", { screen: "Filmes" })} />
+        <CustomDrawerItem
+          label="Início"
+          icon="home-outline"
+          onPress={() => navigation.navigate("MainTabs")}
+        />
+
+        <CustomDrawerItem
+          label="Filmes"
+          icon="movie-search-outline"
+          onPress={() => navigation.navigate("MoviesCatalog")}
+        />
         <CustomDrawerItem label="Séries" icon="television" onPress={() => navigation.navigate("MainTabs", { screen: "Séries" })} />
         <CustomDrawerItem label="Jogos" icon="controller" isComingSoon />
         <CustomDrawerItem label="Música" icon="music-note-eighth" isComingSoon />
@@ -197,6 +204,12 @@ export default function HomeScreen() {
       drawerContent={(props) => <CustomDrawerContent {...props} />}
     >
       <Drawer.Screen name="MainTabs" component={MainTabs} />
+
+      {/* Adicionando a nova rota */}
+      <Drawer.Screen
+        name="MoviesCatalog"
+        component={MoviesScreen}
+      />
     </Drawer.Navigator>
   );
 }
