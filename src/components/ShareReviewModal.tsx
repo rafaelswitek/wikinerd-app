@@ -1,12 +1,14 @@
 import React, { useRef } from "react";
-import { View, StyleSheet, Image, Alert, ScrollView } from "react-native";
-import { Modal, Portal, Text, Button, useTheme, IconButton, Divider, Avatar } from "react-native-paper";
+import { View, StyleSheet, Image, Alert, ScrollView, Dimensions } from "react-native";
+import { Modal, Portal, Text, Button, useTheme, IconButton, Divider } from "react-native-paper";
 import ViewShot from "react-native-view-shot";
 import * as Sharing from 'expo-sharing';
 import Icon from "react-native-vector-icons/MaterialCommunityIcons";
 import { Movie } from "../types/Movie";
 import { Review } from "../types/Review";
 import { getMediaYear } from "../utils/helpers";
+
+const { width } = Dimensions.get('window');
 
 interface Props {
   visible: boolean;
@@ -40,6 +42,8 @@ export default function ShareReviewModal({ visible, onDismiss, movie, review }: 
     { label: "Atuação", value: review.acting_rating },
     { label: "Direção", value: review.direction_rating },
     { label: "Cinematografia", value: review.cinematography_rating },
+    { label: "Trilha Sonora", value: review.soundtrack_rating },
+    { label: "Efeitos Visuais", value: review.visual_effects_rating },
   ].filter(c => c.value != null);
 
   const renderStars = (rating: number) => (
@@ -50,7 +54,6 @@ export default function ShareReviewModal({ visible, onDismiss, movie, review }: 
     </View>
   );
 
-  // Proteção para dados do usuário
   const userName = review.user?.name || "Usuário";
   const userHandle = review.user?.username ? `@${review.user.username}` : "";
   const userAvatar = review.user?.avatar;
@@ -59,18 +62,22 @@ export default function ShareReviewModal({ visible, onDismiss, movie, review }: 
   return (
     <Portal>
       <Modal visible={visible} onDismiss={onDismiss} contentContainerStyle={[styles.container, { backgroundColor: theme.colors.background }]}>
+
+        {/* Header Fixo */}
         <View style={styles.header}>
           <Text variant="titleMedium" style={{ color: theme.colors.onSurface }}>Compartilhar Avaliação</Text>
-          <IconButton icon="close" onPress={onDismiss} />
+          <IconButton icon="close" onPress={onDismiss} iconColor={theme.colors.onSurface} />
         </View>
 
-        <View style={styles.contentRow}>
+        {/* Conteúdo Rolável */}
+        <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+
           {/* Área de Preview (O que será gerado) */}
           <View style={styles.previewContainer}>
-            <Text style={{ marginBottom: 8, color: theme.colors.secondary, fontSize: 12 }}>Preview da Imagem</Text>
+            <Text style={{ marginBottom: 12, color: theme.colors.secondary, fontSize: 12 }}>Preview da Imagem</Text>
 
             <ViewShot ref={viewShotRef} options={{ format: "png", quality: 1.0 }} style={styles.captureArea}>
-              {/* CARD BRANCO */}
+              {/* CARD DO VISUAL (Estilo Instagram Stories) */}
               <View style={styles.card}>
                 <View style={{ alignItems: 'center', marginBottom: 16 }}>
                   <Text style={styles.movieTitle}>{movie.title}</Text>
@@ -89,6 +96,7 @@ export default function ShareReviewModal({ visible, onDismiss, movie, review }: 
                 </View>
                 <Text style={styles.bigScore}>{review.overall_rating}/5</Text>
 
+                {/* Lista de Categorias (Renderiza todas disponíveis) */}
                 <View style={styles.detailsBox}>
                   <Text style={styles.detailsTitle}>AVALIAÇÃO DETALHADA</Text>
                   {categories.map((cat, idx) => (
@@ -101,7 +109,7 @@ export default function ShareReviewModal({ visible, onDismiss, movie, review }: 
 
                 {review.comment && (
                   <View style={styles.commentBox}>
-                    <Text style={styles.commentText}>"{review.comment.length > 80 ? review.comment.substring(0, 80) + '...' : review.comment}"</Text>
+                    <Text style={styles.commentText}>"{review.comment.length > 100 ? review.comment.substring(0, 100) + '...' : review.comment}"</Text>
                   </View>
                 )}
 
@@ -110,7 +118,7 @@ export default function ShareReviewModal({ visible, onDismiss, movie, review }: 
                     <Image source={{ uri: userAvatar }} style={styles.avatar} />
                   ) : (
                     <View style={[styles.avatar, { backgroundColor: '#6200ee', justifyContent: 'center', alignItems: 'center' }]}>
-                      <Text style={{ color: 'white' }}>{userInitial}</Text>
+                      <Text style={{ color: 'white', fontWeight: 'bold' }}>{userInitial}</Text>
                     </View>
                   )}
                   <View style={{ marginLeft: 8 }}>
@@ -126,27 +134,24 @@ export default function ShareReviewModal({ visible, onDismiss, movie, review }: 
             </ViewShot>
           </View>
 
-          {/* Área de Ações */}
           <View style={styles.actionsContainer}>
-            <Text style={{ marginBottom: 16, color: theme.colors.onSurface }}>Compartilhar em:</Text>
+            <Text style={{ marginBottom: 16, color: theme.colors.onSurface, textAlign: 'center' }}>Compartilhar em:</Text>
 
-            <Button mode="contained" icon="download" style={styles.actionBtn} onPress={handleShare}>Salvar Imagem</Button>
+            <Button mode="contained" icon="share-variant" style={styles.actionBtn} onPress={handleShare} buttonColor={theme.colors.primary}>Compartilhar</Button>
 
-            <Text style={styles.hintText}>
-              A imagem será gerada no formato ideal para Instagram Stories (1080x1920px aprox).
-            </Text>
           </View>
-        </View>
+
+        </ScrollView>
       </Modal>
     </Portal>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { margin: 10, borderRadius: 8, height: '90%' },
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 16 },
-  contentRow: { flex: 1, paddingHorizontal: 16 },
-  previewContainer: { alignItems: 'center', flex: 1, marginBottom: 16 },
+  container: { margin: 16, borderRadius: 12, height: '90%', overflow: 'hidden' },
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 12, borderBottomWidth: 1, borderColor: 'rgba(0,0,0,0.1)' },
+  scrollContent: { padding: 16, paddingBottom: 30 },
+  previewContainer: { alignItems: 'center', marginBottom: 24 },
   captureArea: { backgroundColor: 'transparent' },
   card: {
     width: 300,
@@ -155,14 +160,14 @@ const styles = StyleSheet.create({
     padding: 24,
     alignItems: 'center',
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-    elevation: 5,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4.65,
+    elevation: 8,
   },
-  movieTitle: { fontSize: 20, fontWeight: '900', color: '#0f172a', textAlign: 'center' },
+  movieTitle: { fontSize: 20, fontWeight: '900', color: '#0f172a', textAlign: 'center', lineHeight: 24 },
   movieYear: { fontSize: 12, color: '#64748b', marginTop: 4, marginBottom: 12 },
-  poster: { width: 140, height: 210, borderRadius: 8 },
+  poster: { width: 140, height: 210, borderRadius: 8, backgroundColor: '#e2e8f0' },
   bigScore: { fontSize: 32, fontWeight: 'bold', color: '#0f172a', marginVertical: 8 },
   detailsBox: { width: '100%', backgroundColor: 'white', padding: 12, borderRadius: 8, marginTop: 8 },
   detailsTitle: { fontSize: 10, fontWeight: 'bold', color: '#0f172a', marginBottom: 8, textAlign: 'center' },
@@ -176,7 +181,7 @@ const styles = StyleSheet.create({
   userHandle: { fontSize: 10, color: '#64748b' },
   brandBadge: { marginTop: 20, backgroundColor: '#6366f1', paddingHorizontal: 12, paddingVertical: 4, borderRadius: 4 },
   brandText: { color: 'white', fontWeight: '900', fontSize: 10, letterSpacing: 1 },
-  actionsContainer: { height: 200 },
-  actionBtn: { marginBottom: 12, width: '100%' },
-  hintText: { fontSize: 12, color: '#94a3b8', textAlign: 'center', marginTop: 8 }
+  actionsContainer: { width: '100%', alignItems: 'stretch' },
+  actionBtn: { marginBottom: 12 },
+  hintText: { fontSize: 12, textAlign: 'center', marginTop: 4, paddingHorizontal: 20 }
 });
