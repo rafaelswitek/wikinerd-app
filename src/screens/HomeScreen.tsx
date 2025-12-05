@@ -18,14 +18,13 @@ const Drawer = createDrawerNavigator();
 
 function MainTabs() {
   const theme = useTheme();
-
   const isDrawerOpen = useDrawerStatus() === 'open';
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
       <StatusBar
-        style={isDrawerOpen ? "light" : (theme.dark ? "light" : "dark")}
-        backgroundColor={isDrawerOpen ? "#02060e" : theme.colors.surface}
+        style={theme.dark ? "light" : "dark"}
+        backgroundColor={isDrawerOpen ? theme.colors.surface : theme.colors.background}
         translucent
       />
 
@@ -46,9 +45,9 @@ function MainTabs() {
             switch (route.name) {
               case 'Filmes': iconName = 'movie'; break;
               case 'Séries': iconName = 'television-box'; break;
-              case 'Jogos': iconName = 'gamepad-variant'; break;
-              case 'Livros': iconName = 'book-open'; break;
-              case 'Outros': iconName = 'dots-horizontal'; break;
+              // case 'Jogos': iconName = 'gamepad-variant'; break;
+              // case 'Livros': iconName = 'book-open'; break;
+              // case 'Outros': iconName = 'dots-horizontal'; break;
             }
             return <Icon name={iconName} size={size} color={color} />;
           },
@@ -56,9 +55,9 @@ function MainTabs() {
       >
         <Tab.Screen name="Filmes">{() => <MediaTabs mediaType="movies" />}</Tab.Screen>
         <Tab.Screen name="Séries">{() => <MediaTabs mediaType="tv" />}</Tab.Screen>
-        <Tab.Screen name="Jogos">{() => <MediaTabs mediaType="games" />}</Tab.Screen>
+        {/* <Tab.Screen name="Jogos">{() => <MediaTabs mediaType="games" />}</Tab.Screen>
         <Tab.Screen name="Livros">{() => <MediaTabs mediaType="books" />}</Tab.Screen>
-        <Tab.Screen name="Outros">{() => <MediaTabs mediaType="others" />}</Tab.Screen>
+        <Tab.Screen name="Outros">{() => <MediaTabs mediaType="others" />}</Tab.Screen> */}
       </Tab.Navigator>
     </View>
   );
@@ -98,22 +97,31 @@ const CustomDrawerItem = ({ label, icon, isComingSoon, onPress, active }: Drawer
         alignItems: 'center',
         paddingVertical: 10,
         paddingHorizontal: 16,
-        backgroundColor: active ? 'rgba(98, 0, 238, 0.1)' : 'transparent'
+        backgroundColor: active ? theme.colors.secondaryContainer : 'transparent'
       }}
     >
-      <Icon name={icon} size={22} color={theme.colors.onSurfaceVariant} style={{ width: 32 }} />
-      <Text style={{ flex: 1, color: theme.colors.onSurfaceVariant, fontSize: 15 }}>{label}</Text>
+      <Icon
+        name={icon}
+        size={22}
+        color={active ? theme.colors.onSecondaryContainer : theme.colors.onSurfaceVariant}
+        style={{ width: 32 }}
+      />
+      <Text style={{
+        flex: 1,
+        color: active ? theme.colors.onSecondaryContainer : theme.colors.onSurfaceVariant,
+        fontSize: 15
+      }}>
+        {label}
+      </Text>
 
       {isComingSoon && (
         <View style={{
-          backgroundColor: '#3f2c1d',
+          backgroundColor: theme.colors.tertiaryContainer,
           borderRadius: 12,
           paddingHorizontal: 8,
           paddingVertical: 2,
-          borderWidth: 1,
-          borderColor: '#8c4d16'
         }}>
-          <Text style={{ color: '#ff9800', fontSize: 10, fontWeight: 'bold' }}>Em Breve</Text>
+          <Text style={{ color: theme.colors.onTertiaryContainer, fontSize: 10, fontWeight: 'bold' }}>Em Breve</Text>
         </View>
       )}
     </TouchableOpacity>
@@ -124,22 +132,33 @@ function CustomDrawerContent(props: DrawerContentComponentProps) {
   const theme = useTheme();
   const { navigation } = props;
   const { user, signOut } = useContext(AuthContext);
-
   const insets = useSafeAreaInsets();
 
+  const styles = {
+    container: { flex: 1, backgroundColor: theme.colors.surface },
+    card: {
+      backgroundColor: theme.colors.surfaceVariant,
+      borderColor: theme.colors.outlineVariant,
+    },
+    textPrimary: { color: theme.colors.onSurfaceVariant },
+    textSecondary: { color: theme.colors.onSurfaceDisabled || theme.colors.outline },
+    iconColor: theme.colors.onSurfaceVariant
+  };
+
   return (
-    <View style={{ flex: 1, backgroundColor: '#02060e' }}>
+    <View style={styles.container}>
+
       <View style={{
         marginHorizontal: 16,
         marginBottom: 16,
         marginTop: Math.max(insets.top, 20) + 10,
         padding: 12,
-        backgroundColor: '#0f172a',
         borderRadius: 8,
         flexDirection: 'row',
         alignItems: 'center',
         borderWidth: 1,
-        borderColor: '#1e293b'
+        backgroundColor: styles.card.backgroundColor,
+        borderColor: styles.card.borderColor
       }}>
         {user?.avatar ? (
           <Avatar.Image size={40} source={{ uri: user.avatar }} style={{ backgroundColor: theme.colors.primary }} />
@@ -148,12 +167,12 @@ function CustomDrawerContent(props: DrawerContentComponentProps) {
         )}
 
         <View style={{ marginLeft: 12, flex: 1 }}>
-          <Text style={{ color: 'white', fontWeight: 'bold', fontSize: 14 }}>{user?.name || "Visitante"}</Text>
-          <Text style={{ color: '#94a3b8', fontSize: 12 }}>@{user?.username || "usuario"}</Text>
+          <Text style={{ color: theme.colors.onSurface, fontWeight: 'bold', fontSize: 14 }}>{user?.name || "Visitante"}</Text>
+          <Text style={{ color: styles.textSecondary.color, fontSize: 12 }}>@{user?.username || "usuario"}</Text>
         </View>
       </View>
 
-      <Divider style={{ backgroundColor: '#1e293b' }} />
+      <Divider style={{ backgroundColor: theme.colors.outlineVariant }} />
 
       <ScrollView contentContainerStyle={{ paddingBottom: 20 }}>
         <DrawerSectionTitle title="Mídia" />
@@ -193,14 +212,14 @@ function CustomDrawerContent(props: DrawerContentComponentProps) {
               alignItems: 'center',
               padding: 12,
               borderWidth: 1,
-              borderColor: '#1e293b',
               borderRadius: 8,
-              backgroundColor: '#0f172a'
+              backgroundColor: styles.card.backgroundColor,
+              borderColor: styles.card.borderColor
             }}
             onPress={signOut}
           >
-            <Icon name="logout" size={20} color="white" />
-            <Text style={{ color: 'white', marginLeft: 12, fontWeight: '500' }}>Sair</Text>
+            <Icon name="logout" size={20} color={theme.colors.error} />
+            <Text style={{ color: theme.colors.error, marginLeft: 12, fontWeight: '500' }}>Sair</Text>
           </TouchableOpacity>
         </View>
 
@@ -210,11 +229,13 @@ function CustomDrawerContent(props: DrawerContentComponentProps) {
 }
 
 export default function HomeScreen() {
+  const theme = useTheme();
+
   return (
     <Drawer.Navigator
       screenOptions={{
         headerShown: false,
-        drawerStyle: { backgroundColor: '#02060e', width: '80%' },
+        drawerStyle: { backgroundColor: theme.colors.surface, width: '80%' },
         drawerType: 'front'
       }}
       drawerContent={(props) => <CustomDrawerContent {...props} />}
