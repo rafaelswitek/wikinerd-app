@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useMemo } from "react";
-import { ScrollView, View, Image, StyleSheet, Dimensions, StatusBar, TouchableOpacity, Linking, Modal, FlatList, Share } from "react-native";
+import { ScrollView, View, Image, StyleSheet, Dimensions, StatusBar, TouchableOpacity, Linking, Modal, FlatList, Share, Alert } from "react-native";
 import { Text, ActivityIndicator, Chip, Button, Divider, useTheme } from "react-native-paper";
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { api } from "../services/api";
@@ -8,6 +8,8 @@ import { getCertificationColor, getMediaYear } from "../utils/helpers";
 import MediaCard from "../components/MediaCard";
 
 const { width, height } = Dimensions.get("window");
+
+// --- Interfaces ---
 
 interface MediaImage {
   id: string;
@@ -39,6 +41,17 @@ interface ProviderSection {
   title: string;
   data: Provider[];
   type: "flatrate" | "buy" | "rent";
+}
+
+interface UserInteraction {
+  id: string;
+  user_id: string;
+  movie_id: string;
+  watched_date: string | null;
+  status: 'watched' | 'want_to_watch' | null;
+  feedback: 'liked' | 'not_like' | 'favorite' | null;
+  created_at: string;
+  updated_at: string;
 }
 
 // --- Lógica de Ratings ---
@@ -164,6 +177,10 @@ export default function MediaDetailsScreen({ route }: any) {
   const [images, setImages] = useState<MediaImage[]>([]);
   const [videos, setVideos] = useState<MediaVideo[]>([]);
 
+  // Estado para interação do usuário
+  const [userInteraction, setUserInteraction] = useState<UserInteraction | null>(null);
+  const [interactionLoading, setInteractionLoading] = useState(false);
+
   const [collectionData, setCollectionData] = useState<CollectionResponse | null>(null);
 
   const [loading, setLoading] = useState(true);
@@ -180,6 +197,7 @@ export default function MediaDetailsScreen({ route }: any) {
   useEffect(() => {
     setMovie(null);
     setCollectionData(null);
+    setUserInteraction(null);
     setLoading(true);
     setShowAllProviders(false);
 
@@ -204,6 +222,9 @@ export default function MediaDetailsScreen({ route }: any) {
           setImages(imagesRes.data);
           setVideos(videosRes.data);
 
+          // Buscar interação do usuário com este filme
+          fetchUserInteraction(movieData.id);
+
           if (movieData.collection?.id) {
             try {
               const collectionRes = await api.get(`https://api.wikinerd.com.br/api/collection/${movieData.collection.id}/movies`);
@@ -221,6 +242,88 @@ export default function MediaDetailsScreen({ route }: any) {
     }
     fetchData();
   }, [slug]);
+
+  async function fetchUserInteraction(movieId: string) {
+    try {
+      const response = await api.get(`/users/movie/${movieId}`);
+      setUserInteraction(response.data);
+    } catch (error: any) {
+      if (error.response?.status !== 404) {
+        console.log("Erro ao buscar status do usuário:", error);
+      }
+      // Se 404, usuário ainda não interagiu, estado fica null
+    }
+  }
+
+  const handleInteraction = async (
+    field: 'status' | 'feedback',
+    value: string
+  ) => {
+    if (!movie) return;
+    setInteractionLoading(true);
+
+    const currentStatus = userInteraction?.status;
+    const currentFeedback = userInteraction?.feedback;
+
+    let newStatus = currentStatus;
+    let newFeedback = currentFeedback;
+    let watchedDate = userInteraction?.watched_date;
+
+    if (field === 'status') {
+      // Toggle status
+      if (currentStatus === value) {
+        newStatus = null;
+        watchedDate = null;
+      } else {
+        newStatus = value as any;
+        if (value === 'watched') {
+          // Se marcou como visto, define data de hoje se não houver
+          if (!watchedDate) {
+            watchedDate = new Date().toISOString().split('T')[0];
+          }
+        } else {
+          // Se marcou "quero ver", limpa a data
+          watchedDate = null;
+        }
+      }
+    } else if (field === 'feedback') {
+      // Toggle feedback
+      if (currentFeedback === value) {
+        newFeedback = null;
+      } else {
+        newFeedback = value as any;
+
+        // REGRA: Ao marcar feedback, define automaticamente como assistido
+        newStatus = 'watched';
+        if (!watchedDate) {
+          watchedDate = new Date().toISOString().split('T')[0];
+        }
+      }
+    }
+
+    try {
+      // Se o usuário removeu todos os status, deletamos a interação
+      if (!newStatus && !newFeedback && userInteraction?.id) {
+        await api.delete(`/users/movie/${userInteraction.id}`);
+        setUserInteraction(null);
+      } else {
+        // Caso contrário, atualizamos/criamos via PUT
+        const payload = {
+          movie_id: movie.id,
+          status: newStatus,
+          feedback: newFeedback,
+          watched_date: watchedDate
+        };
+        const response = await api.put('/users/movie', payload);
+        setUserInteraction(response.data);
+      }
+    } catch (error) {
+      console.error("Erro ao atualizar interação:", error);
+      Alert.alert("Erro", "Não foi possível atualizar sua interação.");
+    } finally {
+      setInteractionLoading(false);
+    }
+  };
 
   const openImageModal = (image: MediaImage) => {
     setSelectedImage(image);
@@ -347,6 +450,14 @@ export default function MediaDetailsScreen({ route }: any) {
     </View>
   );
 
+  // Helper para cores e estilos dos botões
+  const getButtonProps = (isActive: boolean, activeColor: string) => ({
+    mode: isActive ? "contained" : "outlined" as "contained" | "outlined",
+    buttonColor: isActive ? activeColor : undefined,
+    textColor: isActive ? "white" : theme.colors.onSurfaceVariant,
+    style: [styles.gridButton, !isActive && { borderColor: theme.colors.outline }]
+  });
+
   return (
     <>
       <ScrollView style={[styles.container, { backgroundColor: theme.colors.background }]} contentContainerStyle={{ paddingBottom: 40 }}>
@@ -380,11 +491,11 @@ export default function MediaDetailsScreen({ route }: any) {
               </View>
 
               <Button
-                mode="outlined"
-                icon="bookmark-outline"
-                textColor={theme.colors.onBackground}
-                style={[styles.actionButton, { borderColor: theme.colors.outline }]}
-                onPress={() => { }}
+                {...getButtonProps(userInteraction?.status === 'want_to_watch', theme.colors.primary)}
+                icon={userInteraction?.status === 'want_to_watch' ? "bookmark" : "bookmark-outline"}
+                onPress={() => handleInteraction('status', 'want_to_watch')}
+                loading={interactionLoading}
+                style={[styles.actionButton, userInteraction?.status !== 'want_to_watch' && { borderColor: theme.colors.outline }]}
               >
                 Quero Ver
               </Button>
@@ -393,12 +504,36 @@ export default function MediaDetailsScreen({ route }: any) {
         </View>
 
         <View style={styles.actionsBar}>
-          <Button mode="contained" icon="check" buttonColor="#0ea5e9" style={styles.gridButton}>Assistido</Button>
-          <Button mode="contained" icon="thumb-up" buttonColor="#22c55e" style={styles.gridButton}>Gostei</Button>
+          <Button
+            {...getButtonProps(userInteraction?.status === 'watched', '#0ea5e9')}
+            icon="check"
+            onPress={() => handleInteraction('status', 'watched')}
+          >
+            Assistido
+          </Button>
+          <Button
+            {...getButtonProps(userInteraction?.feedback === 'liked', '#22c55e')}
+            icon="thumb-up"
+            onPress={() => handleInteraction('feedback', 'liked')}
+          >
+            Gostei
+          </Button>
         </View>
         <View style={[styles.actionsBar, { marginTop: 8 }]}>
-          <Button mode="outlined" icon="thumb-down" textColor={theme.colors.onSurfaceVariant} style={[styles.gridButton, { borderColor: theme.colors.outline }]}>Não Gostei</Button>
-          <Button mode="outlined" icon="star-outline" textColor={theme.colors.onSurfaceVariant} style={[styles.gridButton, { borderColor: theme.colors.outline }]}>Favorito</Button>
+          <Button
+            {...getButtonProps(userInteraction?.feedback === 'not_like', '#ef4444')}
+            icon="thumb-down"
+            onPress={() => handleInteraction('feedback', 'not_like')}
+          >
+            Não Gostei
+          </Button>
+          <Button
+            {...getButtonProps(userInteraction?.feedback === 'favorite', '#eab308')}
+            icon={userInteraction?.feedback === 'favorite' ? "star" : "star-outline"}
+            onPress={() => handleInteraction('feedback', 'favorite')}
+          >
+            Favorito
+          </Button>
         </View>
 
         {/* Botão de Compartilhar */}
