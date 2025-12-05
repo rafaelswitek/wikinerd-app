@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { ScrollView, View, StyleSheet, StatusBar, TouchableOpacity, Linking, Modal, FlatList, Share, Image, Dimensions } from "react-native";
-import { Text, ActivityIndicator, Chip, Divider, useTheme } from "react-native-paper";
+import { Text, ActivityIndicator, Chip, Divider, useTheme, Button } from "react-native-paper";
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 
 import { useMediaDetails } from "../hooks/useMediaDetails";
@@ -13,6 +13,11 @@ import AddToListModal from "../components/AddToListModal";
 import MediaHeader from "../components/MediaHeader";
 import MediaActionButtons from "../components/MediaActionButtons";
 
+import ReviewStatsCard from "../components/ReviewStats";
+import ReviewCard from "../components/ReviewCard";
+import { Review, ReviewStats } from "../types/Review";
+import { api } from "../services/api";
+
 const { width, height } = Dimensions.get("window");
 
 export default function MediaDetailsScreen({ route }: any) {
@@ -20,10 +25,10 @@ export default function MediaDetailsScreen({ route }: any) {
   const theme = useTheme();
 
   // Usando o Hook Customizado
-  const { 
-    movie, providers, cast, crew, images, videos, collectionData, 
+  const {
+    movie, providers, cast, crew, images, videos, collectionData,
     userInteraction, loading, interactionLoading, normalizedRatings, average,
-    handleInteraction 
+    handleInteraction
   } = useMediaDetails(slug);
 
   const [activeTab, setActiveTab] = useState<"about" | "cast" | "crew" | "videos" | "images" | "reviews">("about");
@@ -31,8 +36,60 @@ export default function MediaDetailsScreen({ route }: any) {
   const [isImageModalVisible, setIsImageModalVisible] = useState(false);
   const [listModalVisible, setListModalVisible] = useState(false);
   const [showAllProviders, setShowAllProviders] = useState(false);
+  const [reviews, setReviews] = useState<Review[]>([]);
+  const [reviewStats, setReviewStats] = useState<ReviewStats | null>(null);
+  const [reviewsLoading, setReviewsLoading] = useState(false);
+  const [reviewsPage, setReviewsPage] = useState(1);
+  const [hasMoreReviews, setHasMoreReviews] = useState(false);
 
-  // Lógica de UI (Modais e Share)
+  const fetchReviewsData = async (page = 1) => {
+    if (!movie?.id) return;
+
+    if (page === 1) setReviewsLoading(true);
+
+    try {
+      // Se for a primeira página, busca também as estatísticas
+      const promises: Promise<any>[] = [
+        api.get(`https://api.wikinerd.com.br/api/movies/${movie.id}/reviews?page=${page}`)
+      ];
+
+      if (page === 1) {
+        promises.push(api.get(`https://api.wikinerd.com.br/api/movies/${movie.id}/reviews/stats`));
+      }
+
+      const results = await Promise.all(promises);
+      const reviewsResponse = results[0].data;
+
+      if (page === 1) {
+        setReviews(reviewsResponse.data);
+        setReviewStats(results[1].data);
+      } else {
+        setReviews(prev => [...prev, ...reviewsResponse.data]);
+      }
+
+      // Verifica se tem mais páginas (meta.current_page < meta.last_page)
+      setHasMoreReviews(reviewsResponse.meta.current_page < reviewsResponse.meta.last_page);
+      setReviewsPage(page);
+
+    } catch (error) {
+      console.log("Erro ao carregar reviews", error);
+    } finally {
+      setReviewsLoading(false);
+    }
+  };
+
+  const handleLoadMoreReviews = () => {
+    if (!reviewsLoading && hasMoreReviews) {
+      fetchReviewsData(reviewsPage + 1);
+    }
+  };
+
+  React.useEffect(() => {
+    if (activeTab === 'reviews' && reviews.length === 0) {
+      fetchReviewsData();
+    }
+  }, [activeTab, movie]);
+
   const openImageModal = (image: MediaImage) => { setSelectedImage(image); setIsImageModalVisible(true); };
   const closeImageModal = () => { setIsImageModalVisible(false); setSelectedImage(null); };
 
@@ -98,7 +155,7 @@ export default function MediaDetailsScreen({ route }: any) {
 
         <MediaHeader movie={movie} handleShare={handleShare} />
 
-        <MediaActionButtons 
+        <MediaActionButtons
           userInteraction={userInteraction}
           onInteraction={handleInteraction}
           onAddList={() => setListModalVisible(true)}
@@ -325,7 +382,44 @@ export default function MediaDetailsScreen({ route }: any) {
             </View>
           )}
 
-          {activeTab === "reviews" && <Text style={[styles.metaText, { color: theme.colors.onSurfaceVariant }]}>Nenhuma avaliação disponível no momento.</Text>}
+          {activeTab === "reviews" && (
+            <View>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                <Text style={[styles.sectionTitle, { color: theme.colors.onBackground, marginBottom: 0 }]}>Avaliações dos Usuários</Text>
+                <Button mode="contained" onPress={() => console.log('Escrever')} compact buttonColor="#3b82f6">Escrever Avaliação</Button>
+              </View>
+
+              {reviewsLoading && reviewsPage === 1 ? (
+                <ActivityIndicator style={{ marginTop: 20 }} />
+              ) : (
+                <>
+                  {reviewStats && <ReviewStatsCard stats={reviewStats} />}
+
+                  {reviews.length === 0 ? (
+                    <Text style={[styles.metaText, { color: theme.colors.onSurfaceVariant, textAlign: 'center', marginTop: 20 }]}>
+                      Seja o primeiro a avaliar este filme!
+                    </Text>
+                  ) : (
+                    reviews.map((review) => (
+                      <ReviewCard key={review.review_id} review={review} />
+                    ))
+                  )}
+
+                  {hasMoreReviews && (
+                    <Button
+                      mode="outlined"
+                      style={{ marginTop: 16, borderColor: theme.colors.outline }}
+                      textColor={theme.colors.onSurface}
+                      onPress={handleLoadMoreReviews}
+                      loading={reviewsLoading}
+                    >
+                      Carregar mais avaliações
+                    </Button>
+                  )}
+                </>
+              )}
+            </View>
+          )}
         </View>
       </ScrollView>
 
