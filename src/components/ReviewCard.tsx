@@ -161,18 +161,25 @@ export default function ReviewCard({ review, onDelete, onShare }: Props) {
         )}
       </View>
 
-      {/* TEXTO DE CONTAGEM DE FEEDBACK */}
-      <View style={styles.feedbackSummary}>
-        {feedbackCounts?.useful > 0 ? (
-          <Text style={{ fontSize: 12, color: theme.colors.secondary }}>
-            {feedbackCounts.useful} acharam útil
-          </Text>
-        ) : (
-          <Text style={{ fontSize: 12, color: theme.colors.secondary, opacity: 0.5 }}>
-            Seja o primeiro a avaliar
-          </Text>
-        )}
-      </View>
+      {(feedbackCounts?.useful > 0 || feedbackCounts?.not_useful > 0 || feedbackCounts?.report > 0) && (
+        <View style={styles.feedbackSummary}>
+          {feedbackCounts.useful > 0 && (
+            <Text style={{ fontSize: 12, color: theme.colors.secondary, marginRight: 12 }}>
+              {feedbackCounts.useful} acharam útil
+            </Text>
+          )}
+          {feedbackCounts.not_useful > 0 && (
+            <Text style={{ fontSize: 12, color: theme.colors.secondary, marginRight: 12 }}>
+              {feedbackCounts.not_useful} não acharam útil
+            </Text>
+          )}
+          {feedbackCounts.report > 0 && (
+            <Text style={{ fontSize: 12, color: theme.colors.secondary }}>
+              {feedbackCounts.report} reportaram
+            </Text>
+          )}
+        </View>
+      )}
 
       {/* DIVISOR */}
       <View style={[styles.divider, { backgroundColor: theme.colors.outlineVariant }]} />
