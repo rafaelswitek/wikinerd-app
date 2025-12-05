@@ -3,6 +3,8 @@ import { View, StyleSheet, FlatList, ActivityIndicator } from "react-native";
 import { Searchbar, Text, Button, useTheme, Menu } from "react-native-paper";
 import { useNavigation, DrawerActions } from "@react-navigation/native";
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
 import { api } from "../services/api";
 import MediaCard from "../components/MediaCard";
 import FilterModal from "../components/FilterModal";
@@ -18,14 +20,13 @@ interface PaginationData {
 export default function MoviesScreen() {
   const theme = useTheme();
   const navigation = useNavigation();
-  
-  // Estados de Dados
+  const insets = useSafeAreaInsets();
+
   const [movies, setMovies] = useState<Movie[]>([]);
   const [pagination, setPagination] = useState<PaginationData | null>(null);
   const [loading, setLoading] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
-  
-  // Estados de Filtro e Busca
+
   const [searchTerm, setSearchTerm] = useState("");
   const [debouncedTerm, setDebouncedTerm] = useState("");
   const [filters, setFilters] = useState<any>({});
@@ -33,11 +34,9 @@ export default function MoviesScreen() {
   const [direction, setDirection] = useState<"asc" | "desc">("desc");
   const [page, setPage] = useState(1);
 
-  // Estados de UI
   const [filterModalVisible, setFilterModalVisible] = useState(false);
   const [sortMenuVisible, setSortMenuVisible] = useState(false);
 
-  // Debounce da busca
   useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedTerm(searchTerm);
@@ -46,12 +45,10 @@ export default function MoviesScreen() {
     return () => clearTimeout(timer);
   }, [searchTerm]);
 
-  // Carregar filmes
   useEffect(() => {
     fetchMovies(page === 1 ? 1 : page);
-  }, [debouncedTerm, filters, orderBy, direction, page]); // Adicionei page aqui
+  }, [debouncedTerm, filters, orderBy, direction, page]);
 
-  // Resetar página ao mudar filtros (exceto a própria página)
   useEffect(() => {
     setPage(1);
   }, [debouncedTerm, filters, orderBy, direction]);
@@ -75,13 +72,13 @@ export default function MoviesScreen() {
       if (filters.classification?.length) params['certification[]'] = filters.classification;
 
       const response = await api.get("/movies", { params });
-      
+
       if (pageNumber === 1) {
         setMovies(response.data.data);
       } else {
         setMovies((prev) => [...prev, ...response.data.data]);
       }
-      
+
       setPagination({
         current_page: response.data.current_page,
         last_page: response.data.last_page,
@@ -104,10 +101,10 @@ export default function MoviesScreen() {
 
   const handleSortChange = (value: string) => {
     if (value === orderBy) {
-        setDirection(direction === "asc" ? "desc" : "asc");
+      setDirection(direction === "asc" ? "desc" : "asc");
     } else {
-        setOrderBy(value);
-        setDirection("desc");
+      setOrderBy(value);
+      setDirection("desc");
     }
     setSortMenuVisible(false);
   };
@@ -119,24 +116,32 @@ export default function MoviesScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
-      
+
       {/* Header Customizado */}
-      <View style={[styles.header, { backgroundColor: theme.colors.surface }]}>
+      {/* 3. ADICIONAR O PADDING TOP DINÂMICO ABAIXO */}
+      <View style={[
+        styles.header,
+        {
+          backgroundColor: theme.colors.surface,
+          paddingTop: insets.top + 10
+        }
+      ]}>
         <View style={styles.headerTop}>
-             <Button icon="menu" textColor={theme.colors.onSurface} onPress={() => navigation.dispatch(DrawerActions.openDrawer())} compact>
-                Menu
-             </Button>
-             <View style={styles.headerTitleContainer}>
-                <Icon name="filmstrip" size={24} color={theme.colors.primary} style={{ marginRight: 8 }} />
-                <Text variant="titleLarge" style={{ fontWeight: 'bold', color: theme.colors.onSurface }}>Filmes</Text>
-             </View>
-             {pagination && (
-                <View style={[styles.badge, { backgroundColor: theme.colors.surfaceVariant }]}>
-                    <Text style={{ color: theme.colors.onSurfaceVariant, fontSize: 10, fontWeight: 'bold' }}>
-                        {pagination.total > 1000 ? (pagination.total / 1000).toFixed(0) + 'k' : pagination.total}
-                    </Text>
-                </View>
-             )}
+          {/* O resto do conteúdo do header continua igual */}
+          <Button icon="menu" textColor={theme.colors.onSurface} onPress={() => navigation.dispatch(DrawerActions.openDrawer())} compact>
+            Menu
+          </Button>
+          <View style={styles.headerTitleContainer}>
+            <Icon name="filmstrip" size={24} color={theme.colors.primary} style={{ marginRight: 8 }} />
+            <Text variant="titleLarge" style={{ fontWeight: 'bold', color: theme.colors.onSurface }}>Filmes</Text>
+          </View>
+          {pagination && (
+            <View style={[styles.badge, { backgroundColor: theme.colors.surfaceVariant }]}>
+              <Text style={{ color: theme.colors.onSurfaceVariant, fontSize: 10, fontWeight: 'bold' }}>
+                {pagination.total > 1000 ? (pagination.total / 1000).toFixed(0) + 'k' : pagination.total}
+              </Text>
+            </View>
+          )}
         </View>
 
         <Searchbar
@@ -146,11 +151,13 @@ export default function MoviesScreen() {
           style={styles.searchBar}
           inputStyle={{ minHeight: 0 }}
         />
-        
+
+        {/* ... Resto do Header ... */}
         <View style={styles.controlsRow}>
-          <Button 
-            icon="filter-variant" 
-            mode="outlined" 
+          {/* ... Botões de filtro e sort ... */}
+          <Button
+            icon="filter-variant"
+            mode="outlined"
             onPress={() => setFilterModalVisible(true)}
             style={styles.controlButton}
             textColor={theme.colors.onSurface}
@@ -162,33 +169,34 @@ export default function MoviesScreen() {
             visible={sortMenuVisible}
             onDismiss={() => setSortMenuVisible(false)}
             anchor={
-                <Button 
-                    icon="sort" 
-                    mode="outlined" 
-                    onPress={() => setSortMenuVisible(true)}
-                    style={styles.controlButton}
-                    textColor={theme.colors.onSurface}
-                >
-                    {getSortLabel()}
-                </Button>
+              <Button
+                icon="sort"
+                mode="outlined"
+                onPress={() => setSortMenuVisible(true)}
+                style={styles.controlButton}
+                textColor={theme.colors.onSurface}
+              >
+                {getSortLabel()}
+              </Button>
             }
           >
             {sortOptions.map(opt => (
-                <Menu.Item 
-                    key={opt.id} 
-                    onPress={() => handleSortChange(opt.id)} 
-                    title={opt.label}
-                    leadingIcon={orderBy === opt.id ? (direction === 'asc' ? 'arrow-up' : 'arrow-down') : undefined}
-                />
+              <Menu.Item
+                key={opt.id}
+                onPress={() => handleSortChange(opt.id)}
+                title={opt.label}
+                leadingIcon={orderBy === opt.id ? (direction === 'asc' ? 'arrow-up' : 'arrow-down') : undefined}
+              />
             ))}
           </Menu>
         </View>
       </View>
 
-      {/* Lista de Filmes */}
+      {/* ... Resto da tela (FlatList, FilterModal) se mantém igual ... */}
+      {/* ... [CÓDIGO OMITIDO] ... */}
       {loading ? (
         <View style={styles.center}>
-            <ActivityIndicator size="large" color={theme.colors.primary} />
+          <ActivityIndicator size="large" color={theme.colors.primary} />
         </View>
       ) : (
         <FlatList
@@ -196,8 +204,7 @@ export default function MoviesScreen() {
           keyExtractor={(item) => item.id.toString()}
           renderItem={({ item }) => (
             <View style={styles.cardWrapper}>
-                {/* Ajuste na largura do MediaCard via props ou style direto se necessário */}
-                <MediaCard media={item} />
+              <MediaCard media={item} />
             </View>
           )}
           numColumns={3}
@@ -208,17 +215,17 @@ export default function MoviesScreen() {
           ListFooterComponent={loadingMore ? <ActivityIndicator style={{ margin: 20 }} /> : null}
           ListEmptyComponent={
             <View style={styles.center}>
-                <Text style={{ color: theme.colors.onSurfaceVariant }}>Nenhum filme encontrado.</Text>
+              <Text style={{ color: theme.colors.onSurfaceVariant }}>Nenhum filme encontrado.</Text>
             </View>
           }
         />
       )}
 
-      <FilterModal 
+      <FilterModal
         visible={filterModalVisible}
         onDismiss={() => setFilterModalVisible(false)}
         onApply={(newFilters) => {
-            setFilters(newFilters);
+          setFilters(newFilters);
         }}
         currentFilters={filters}
       />
@@ -228,7 +235,7 @@ export default function MoviesScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  header: { padding: 16, paddingBottom: 12, elevation: 4, zIndex: 1 },
+  header: { paddingHorizontal: 16, paddingBottom: 12, elevation: 4, zIndex: 1 },
   headerTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 },
   headerTitleContainer: { flexDirection: 'row', alignItems: 'center' },
   badge: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 12 },
@@ -236,7 +243,7 @@ const styles = StyleSheet.create({
   controlsRow: { flexDirection: 'row', gap: 10 },
   controlButton: { flex: 1, borderRadius: 4, borderColor: 'rgba(255,255,255,0.2)' },
   listContent: { padding: 8 },
-  columnWrapper: { justifyContent: 'flex-start' }, // Removi gap fixo para controlar melhor com cardWrapper
-  cardWrapper: { width: '33.33%', padding: 4 }, // Distribuição em 3 colunas
+  columnWrapper: { justifyContent: 'flex-start' },
+  cardWrapper: { width: '33.33%', padding: 4 },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center', marginTop: 50 },
 });

@@ -1,8 +1,8 @@
 import React, { useContext } from "react";
-import { View, Image, StyleSheet, TouchableOpacity, ScrollView } from "react-native";
+import { View, TouchableOpacity, ScrollView } from "react-native";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { createDrawerNavigator, DrawerContentComponentProps } from "@react-navigation/drawer";
-import { useNavigation, DrawerActions } from "@react-navigation/native";
+import { useNavigation } from "@react-navigation/native";
 import { Text, Avatar, useTheme, Divider } from "react-native-paper";
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 
@@ -96,7 +96,7 @@ const CustomDrawerItem = ({ label, icon, isComingSoon, onPress, active }: Drawer
 
       {isComingSoon && (
         <View style={{
-          backgroundColor: '#3f2c1d', // Marrom escuro parecido com a imagem
+          backgroundColor: '#3f2c1d', 
           borderRadius: 12,
           paddingHorizontal: 8,
           paddingVertical: 2,
@@ -112,7 +112,7 @@ const CustomDrawerItem = ({ label, icon, isComingSoon, onPress, active }: Drawer
 
 function CustomDrawerContent(props: DrawerContentComponentProps) {
   const theme = useTheme();
-  const navigation = useNavigation<any>();
+  const { navigation } = props;
   const { user, signOut } = useContext(AuthContext);
 
   return (
@@ -139,7 +139,6 @@ function CustomDrawerContent(props: DrawerContentComponentProps) {
       <Divider style={{ backgroundColor: '#1e293b' }} />
 
       <ScrollView contentContainerStyle={{ paddingBottom: 20 }}>
-        {/* Mídia */}
         <DrawerSectionTitle title="Mídia" />
         <CustomDrawerItem
           label="Início"
@@ -205,7 +204,6 @@ export default function HomeScreen() {
     >
       <Drawer.Screen name="MainTabs" component={MainTabs} />
 
-      {/* Adicionando a nova rota */}
       <Drawer.Screen
         name="MoviesCatalog"
         component={MoviesScreen}
