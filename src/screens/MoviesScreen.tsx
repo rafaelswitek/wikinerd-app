@@ -157,7 +157,7 @@ export default function MoviesScreen() {
           {pagination && (
             <View style={[styles.badge, { backgroundColor: theme.colors.surfaceVariant }]}>
               <Text style={{ color: theme.colors.onSurfaceVariant, fontSize: 10, fontWeight: 'bold' }}>
-                {pagination.total > 1000 ? (pagination.total / 1000).toFixed(0) + 'k' : pagination.total}
+                {pagination.total.toLocaleString('pt-BR')} filmes
               </Text>
             </View>
           )}

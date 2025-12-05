@@ -21,9 +21,16 @@ export default function FilterModal({ visible, onDismiss, onApply, currentFilter
   const [rangeStart, setRangeStart] = useState("");
   const [rangeEnd, setRangeEnd] = useState("");
 
+  const [countryQuery, setCountryQuery] = useState("");
+  const [streamingQuery, setStreamingQuery] = useState("");
+
   useEffect(() => {
     if (visible) {
       setLocalFilters(currentFilters || {});
+
+      // Resetar buscas internas ao abrir o modal
+      setCountryQuery("");
+      setStreamingQuery("");
 
       if (currentFilters.yearData) {
         setYearMode(currentFilters.yearData.mode);
@@ -72,7 +79,17 @@ export default function FilterModal({ visible, onDismiss, onApply, currentFilter
     setRangeStart("");
     setRangeEnd("");
     setYearMode("specific");
+    setCountryQuery("");
+    setStreamingQuery("");
   };
+
+  const filteredCountries = countryOptions.filter(c =>
+    c.label.toLowerCase().includes(countryQuery.toLowerCase())
+  );
+
+  const filteredStreamings = streamingOptions.filter(s =>
+    s.label.toLowerCase().includes(streamingQuery.toLowerCase())
+  );
 
   const renderCheckboxItem = (category: string, item: { id: string; label: string }) => (
     <Checkbox.Item
@@ -82,6 +99,7 @@ export default function FilterModal({ visible, onDismiss, onApply, currentFilter
       onPress={() => toggleFilter(category, item.id)}
       labelStyle={{ color: theme.colors.onSurface }}
       color={theme.colors.primary}
+      style={{ paddingVertical: 0 }} // Compactar lista
     />
   );
 
@@ -94,10 +112,9 @@ export default function FilterModal({ visible, onDismiss, onApply, currentFilter
         </View>
 
         <ScrollView style={styles.content}>
-          {/* Seção de Ano Customizada */}
+          {/* Seção Ano */}
           <List.Accordion title="Ano de Lançamento" titleStyle={{ color: theme.colors.onSurface }} id="year">
             <View style={styles.yearSection}>
-              <Text variant="bodySmall" style={{ marginBottom: 8, color: theme.colors.secondary }}>Tipo de busca</Text>
               <SegmentedButtons
                 value={yearMode}
                 onValueChange={setYearMode}
@@ -108,12 +125,13 @@ export default function FilterModal({ visible, onDismiss, onApply, currentFilter
 
               {yearMode === 'specific' && (
                 <TextInput
-                  label="Digite um ano (ex: 2014)"
+                  label="Ex: 2014"
                   value={specificYear}
                   onChangeText={setSpecificYear}
                   keyboardType="numeric"
                   mode="outlined"
                   maxLength={4}
+                  dense
                 />
               )}
 
@@ -126,6 +144,7 @@ export default function FilterModal({ visible, onDismiss, onApply, currentFilter
                       onPress={() => setSelectedDecade(decade.id)}
                       style={styles.chip}
                       compact
+                      labelStyle={{ fontSize: 12 }}
                     >
                       {decade.label}
                     </Button>
@@ -135,45 +154,63 @@ export default function FilterModal({ visible, onDismiss, onApply, currentFilter
 
               {yearMode === 'range' && (
                 <View style={styles.rangeContainer}>
-                  <TextInput
-                    label="De"
-                    value={rangeStart}
-                    onChangeText={setRangeStart}
-                    keyboardType="numeric"
-                    mode="outlined"
-                    style={{ flex: 1 }}
-                    maxLength={4}
-                  />
+                  <TextInput label="De" value={rangeStart} onChangeText={setRangeStart} keyboardType="numeric" mode="outlined" style={{ flex: 1 }} maxLength={4} dense />
                   <Text style={{ marginHorizontal: 8, alignSelf: 'center' }}>até</Text>
-                  <TextInput
-                    label="Até"
-                    value={rangeEnd}
-                    onChangeText={setRangeEnd}
-                    keyboardType="numeric"
-                    mode="outlined"
-                    style={{ flex: 1 }}
-                    maxLength={4}
-                  />
+                  <TextInput label="Até" value={rangeEnd} onChangeText={setRangeEnd} keyboardType="numeric" mode="outlined" style={{ flex: 1 }} maxLength={4} dense />
                 </View>
               )}
             </View>
           </List.Accordion>
           <Divider />
 
-          {/* Seção de Países */}
-          <List.Accordion title="Países de Origem" titleStyle={{ color: theme.colors.onSurface }} id="countries">
-            {countryOptions.map((c) => renderCheckboxItem("countries", c))}
+          {/* Seção Países com Busca */}
+          <List.Accordion title="Países" titleStyle={{ color: theme.colors.onSurface }} id="countries">
+            <View style={styles.searchContainer}>
+              <TextInput
+                placeholder="Buscar país..."
+                value={countryQuery}
+                onChangeText={setCountryQuery}
+                mode="outlined"
+                dense
+                style={styles.searchInput}
+                left={<TextInput.Icon icon="magnify" />}
+              />
+            </View>
+            <ScrollView style={{ maxHeight: 250 }} nestedScrollEnabled>
+              {filteredCountries.map((c) => renderCheckboxItem("countries", c))}
+              {filteredCountries.length === 0 && <Text style={styles.emptyText}>Nenhum país encontrado</Text>}
+            </ScrollView>
           </List.Accordion>
           <Divider />
 
-          {/* Seções Antigas */}
+          {/* Seção Streaming com Busca */}
+          <List.Accordion title="Streaming" titleStyle={{ color: theme.colors.onSurface }} id="streamings">
+            <View style={styles.searchContainer}>
+              <TextInput
+                placeholder="Buscar streaming..."
+                value={streamingQuery}
+                onChangeText={setStreamingQuery}
+                mode="outlined"
+                dense
+                style={styles.searchInput}
+                left={<TextInput.Icon icon="magnify" />}
+              />
+            </View>
+            <ScrollView style={{ maxHeight: 250 }} nestedScrollEnabled>
+              {filteredStreamings.map((s) => renderCheckboxItem("streamings", s))}
+              {filteredStreamings.length === 0 && <Text style={styles.emptyText}>Nenhum serviço encontrado</Text>}
+            </ScrollView>
+          </List.Accordion>
+          <Divider />
+
           <List.Accordion title="Gêneros" titleStyle={{ color: theme.colors.onSurface }} id="genres">
-            {genreOptions.map((g) => renderCheckboxItem("genres", g))}
-          </List.Accordion>
-          <Divider />
-
-          <List.Accordion title="Serviços de Streaming" titleStyle={{ color: theme.colors.onSurface }} id="streamings">
-            {streamingOptions.map((s) => renderCheckboxItem("streamings", s))}
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', padding: 8 }}>
+              {genreOptions.map(g => (
+                <View key={g.id} style={{ width: '50%' }}>
+                  {renderCheckboxItem("genres", g)}
+                </View>
+              ))}
+            </View>
           </List.Accordion>
           <Divider />
 
@@ -192,13 +229,16 @@ export default function FilterModal({ visible, onDismiss, onApply, currentFilter
 }
 
 const styles = StyleSheet.create({
-  container: { margin: 20, borderRadius: 8, height: '90%' },
+  container: { margin: 20, borderRadius: 12, height: '90%', overflow: 'hidden' },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 16, borderBottomWidth: 1 },
   content: { flex: 1 },
   yearSection: { padding: 16, backgroundColor: 'rgba(0,0,0,0.02)' },
   chipContainer: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  chip: { marginBottom: 4 },
+  chip: { marginBottom: 4, flexGrow: 1 },
   rangeContainer: { flexDirection: 'row', justifyContent: 'space-between' },
+  searchContainer: { paddingHorizontal: 16, paddingBottom: 8, paddingTop: 4 },
+  searchInput: { backgroundColor: 'transparent' },
+  emptyText: { padding: 16, textAlign: 'center', opacity: 0.6 },
   footer: { flexDirection: 'row', padding: 16, gap: 12, borderTopWidth: 1 },
   button: { flex: 1 }
 });
