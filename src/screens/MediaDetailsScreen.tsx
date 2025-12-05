@@ -1,4 +1,4 @@
-import React, { useState, useContext, useEffect } from "react"; // Adicionado useContext
+import React, { useState, useContext, useEffect } from "react";
 import { ScrollView, View, StyleSheet, StatusBar, TouchableOpacity, Linking, Modal, FlatList, Share, Image, Dimensions, Alert } from "react-native";
 import { Text, ActivityIndicator, Chip, Divider, useTheme, Button } from "react-native-paper";
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
@@ -7,7 +7,7 @@ import { useMediaDetails } from "../hooks/useMediaDetails";
 import { getCertificationColor, formatCurrency, formatRuntime, formatDate, getSocialData } from "../utils/helpers";
 import { Provider } from "../types/Movie";
 import { MediaImage } from "../types/Interactions";
-import { AuthContext } from "../context/AuthContext"; // Importação do Contexto
+import { AuthContext } from "../context/AuthContext";
 
 import MediaCard from "../components/MediaCard";
 import AddToListModal from "../components/AddToListModal";
@@ -26,7 +26,6 @@ export default function MediaDetailsScreen({ route }: any) {
   const { slug } = route.params;
   const theme = useTheme();
 
-  // Pegamos o usuário logado para usar na criação da review local
   const { user } = useContext(AuthContext);
 
   const {
@@ -66,7 +65,6 @@ export default function MediaDetailsScreen({ route }: any) {
   };
 
   const handleShareExistingReview = (reviewToShare: Review) => {
-    // Reutilizamos o estado justCreatedReview pois ele serve como "review selecionada para o modal"
     setJustCreatedReview(reviewToShare);
     setShareModalVisible(true);
   };
@@ -147,6 +145,17 @@ export default function MediaDetailsScreen({ route }: any) {
           try {
             await api.delete(`/users/movie/review/${id}`);
             setReviews(prev => prev.filter(r => r.review_id !== id));
+
+            // Atualiza as estatísticas após excluir
+            if (movie?.id) {
+              try {
+                const statsResponse = await api.get(`https://api.wikinerd.com.br/api/movies/${movie.id}/reviews/stats`);
+                setReviewStats(statsResponse.data);
+              } catch (statsError) {
+                console.log("Erro ao atualizar estatísticas:", statsError);
+              }
+            }
+
           } catch (error) {
             Alert.alert("Erro", "Não foi possível excluir a avaliação.");
           }
@@ -156,8 +165,6 @@ export default function MediaDetailsScreen({ route }: any) {
   };
 
   const handleReviewSuccess = (newReview: any) => {
-    // Aqui usamos o 'user' do AuthContext para garantir que temos nome e avatar
-    // Se 'user' for null (improvável se estiver logado), usamos um fallback seguro
     const currentUserInfo = user || {
       id: newReview.user_id,
       name: "Usuário",
@@ -174,6 +181,13 @@ export default function MediaDetailsScreen({ route }: any) {
     };
 
     setReviews(prev => [fullReview, ...prev]);
+
+    // Ao criar review, também é bom atualizar as stats para refletir a nova nota
+    if (movie?.id) {
+      api.get(`https://api.wikinerd.com.br/api/movies/${movie.id}/reviews/stats`)
+        .then(res => setReviewStats(res.data))
+        .catch(err => console.log("Erro ao atualizar stats pós-review", err));
+    }
 
     setJustCreatedReview(fullReview);
     setTimeout(() => setShareModalVisible(true), 500);
@@ -195,7 +209,6 @@ export default function MediaDetailsScreen({ route }: any) {
     );
   }
 
-  // Helpers de Equipe
   const getCrewByJob = (jobs: string[]) => crew.filter(c => jobs.includes(c.job.job)).map(c => c.name).join(", ");
   const photography = getCrewByJob(["Director of Photography", "Cinematography"]);
   const music = getCrewByJob(["Original Music Composer", "Music"]);
@@ -466,7 +479,7 @@ export default function MediaDetailsScreen({ route }: any) {
                         key={review.review_id}
                         review={review}
                         onDelete={handleDeleteReview}
-                        onShare={handleShareExistingReview} // PASSANDO A FUNÇÃO AQUI
+                        onShare={handleShareExistingReview}
                       />
                     ))
                   )}
