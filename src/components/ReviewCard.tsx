@@ -9,20 +9,19 @@ import { api } from "../services/api";
 interface Props {
   review: Review;
   onDelete?: (reviewId: string) => void;
+  onShare?: (review: Review) => void; // Nova prop
 }
 
-export default function ReviewCard({ review, onDelete }: Props) {
+export default function ReviewCard({ review, onDelete, onShare }: Props) {
   const theme = useTheme();
-  const { user } = useContext(AuthContext); // Usuário logado
+  const { user } = useContext(AuthContext);
   
   const [showSpoiler, setShowSpoiler] = useState(!review.has_spoilers);
-  
-  // Estados para gerenciar feedback localmente
   const [feedbackCounts, setFeedbackCounts] = useState(review.feedback_counts);
   const [userFeedback, setUserFeedback] = useState(review.user_feedback);
   const [loadingFeedback, setLoadingFeedback] = useState(false);
 
-  const isOwner = user?.id === review.user.id;
+  const isOwner = user?.id === review.user?.id;
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -46,7 +45,6 @@ export default function ReviewCard({ review, onDelete }: Props) {
         feedback: type
       });
 
-      // Atualiza o estado com a resposta da API
       if (response.data) {
         setUserFeedback(response.data.user_feedback);
         setFeedbackCounts(response.data.feedback_counts);
@@ -68,19 +66,23 @@ export default function ReviewCard({ review, onDelete }: Props) {
     { label: "Efeitos Visuais", value: review.visual_effects_rating },
   ].filter(c => c.value != null);
 
+  const userName = review.user?.name || "Usuário";
+  const userHandle = review.user?.username ? `@${review.user.username}` : "";
+  const userAvatar = review.user?.avatar;
+  const userInitial = userName.charAt(0);
+
   return (
     <View style={[styles.container, { backgroundColor: theme.colors.surface, borderColor: theme.colors.outlineVariant }]}>
       
-      {/* Header do Card */}
       <View style={styles.header}>
-        {review.user.avatar ? (
-          <Avatar.Image size={40} source={{ uri: review.user.avatar }} />
+        {userAvatar ? (
+          <Avatar.Image size={40} source={{ uri: userAvatar }} />
         ) : (
-          <Avatar.Text size={40} label={review.user.name.charAt(0)} style={{ backgroundColor: theme.colors.primary }} />
+          <Avatar.Text size={40} label={userInitial} style={{ backgroundColor: theme.colors.primary }} />
         )}
         <View style={styles.headerInfo}>
-          <Text style={[styles.name, { color: theme.colors.onSurface }]}>{review.user.name}</Text>
-          <Text style={{ color: theme.colors.secondary, fontSize: 12 }}>@{review.user.username}</Text>
+          <Text style={[styles.name, { color: theme.colors.onSurface }]}>{userName}</Text>
+          <Text style={{ color: theme.colors.secondary, fontSize: 12 }}>{userHandle}</Text>
         </View>
         <View style={{ alignItems: 'flex-end' }}>
           <View style={{ flexDirection: 'row', alignItems: 'center' }}>
@@ -109,7 +111,6 @@ export default function ReviewCard({ review, onDelete }: Props) {
         ))}
       </View>
 
-      {/* Área de Comentário / Spoiler */}
       {review.has_spoilers && !showSpoiler ? (
         <View style={[styles.spoilerBox, { borderColor: '#eab308', backgroundColor: 'rgba(234, 179, 8, 0.05)' }]}>
           <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
@@ -135,22 +136,21 @@ export default function ReviewCard({ review, onDelete }: Props) {
 
       <View style={[styles.divider, { backgroundColor: theme.colors.outlineVariant }]} />
       
-      {/* Footer de Ações */}
       <View style={styles.footer}>
         {isOwner ? (
-          // Ações para o Dono
           <>
-            <TouchableOpacity style={styles.actionBtn}>
+            {/* AÇÃO DE COMPARTILHAR CONECTADA AQUI */}
+            <TouchableOpacity style={styles.actionBtn} onPress={() => onShare && onShare(review)}>
                 <Icon name="share-variant-outline" size={16} color={theme.colors.secondary} />
                 <Text style={{ color: theme.colors.secondary, fontSize: 12, marginLeft: 4 }}>Compartilhar</Text>
             </TouchableOpacity>
+            
             <TouchableOpacity style={styles.actionBtn} onPress={() => onDelete && onDelete(review.review_id)}>
                 <Icon name="trash-can-outline" size={16} color={theme.colors.error} />
                 <Text style={{ color: theme.colors.error, fontSize: 12, marginLeft: 4 }}>Excluir</Text>
             </TouchableOpacity>
           </>
         ) : (
-          // Ações para outros usuários (Feedback)
           <>
             <TouchableOpacity 
               style={styles.actionBtn} 
@@ -166,7 +166,7 @@ export default function ReviewCard({ review, onDelete }: Props) {
                   color: userFeedback === 'useful' ? theme.colors.primary : theme.colors.secondary, 
                   fontSize: 12, marginLeft: 4 
                 }}>
-                  Útil ({feedbackCounts.useful})
+                  Útil ({feedbackCounts?.useful || 0})
                 </Text>
             </TouchableOpacity>
 
@@ -184,7 +184,7 @@ export default function ReviewCard({ review, onDelete }: Props) {
                   color: userFeedback === 'not_useful' ? theme.colors.error : theme.colors.secondary, 
                   fontSize: 12, marginLeft: 4 
                 }}>
-                  Não útil ({feedbackCounts.not_useful})
+                  Não útil ({feedbackCounts?.not_useful || 0})
                 </Text>
             </TouchableOpacity>
 

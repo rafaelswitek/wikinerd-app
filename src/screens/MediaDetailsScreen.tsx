@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useContext, useEffect } from "react"; // Adicionado useContext
 import { ScrollView, View, StyleSheet, StatusBar, TouchableOpacity, Linking, Modal, FlatList, Share, Image, Dimensions, Alert } from "react-native";
 import { Text, ActivityIndicator, Chip, Divider, useTheme, Button } from "react-native-paper";
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
@@ -7,14 +7,16 @@ import { useMediaDetails } from "../hooks/useMediaDetails";
 import { getCertificationColor, formatCurrency, formatRuntime, formatDate, getSocialData } from "../utils/helpers";
 import { Provider } from "../types/Movie";
 import { MediaImage } from "../types/Interactions";
+import { AuthContext } from "../context/AuthContext"; // Importação do Contexto
 
 import MediaCard from "../components/MediaCard";
 import AddToListModal from "../components/AddToListModal";
 import MediaHeader from "../components/MediaHeader";
 import MediaActionButtons from "../components/MediaActionButtons";
-
 import ReviewStatsCard from "../components/ReviewStats";
 import ReviewCard from "../components/ReviewCard";
+import WriteReviewModal from "../components/WriteReviewModal";
+import ShareReviewModal from "../components/ShareReviewModal";
 import { Review, ReviewStats } from "../types/Review";
 import { api } from "../services/api";
 
@@ -24,7 +26,9 @@ export default function MediaDetailsScreen({ route }: any) {
   const { slug } = route.params;
   const theme = useTheme();
 
-  // Usando o Hook Customizado
+  // Pegamos o usuário logado para usar na criação da review local
+  const { user } = useContext(AuthContext);
+
   const {
     movie, providers, cast, crew, images, videos, collectionData,
     userInteraction, loading, interactionLoading, normalizedRatings, average,
@@ -36,16 +40,62 @@ export default function MediaDetailsScreen({ route }: any) {
   const [isImageModalVisible, setIsImageModalVisible] = useState(false);
   const [listModalVisible, setListModalVisible] = useState(false);
   const [showAllProviders, setShowAllProviders] = useState(false);
+
+  // Reviews States
   const [reviews, setReviews] = useState<Review[]>([]);
   const [reviewStats, setReviewStats] = useState<ReviewStats | null>(null);
   const [reviewsLoading, setReviewsLoading] = useState(false);
   const [reviewsPage, setReviewsPage] = useState(1);
   const [hasMoreReviews, setHasMoreReviews] = useState(false);
+  const [writeModalVisible, setWriteModalVisible] = useState(false);
+  const [shareModalVisible, setShareModalVisible] = useState(false);
+  const [justCreatedReview, setJustCreatedReview] = useState<Review | null>(null);
+
+  const openImageModal = (image: MediaImage) => { setSelectedImage(image); setIsImageModalVisible(true); };
+  const closeImageModal = () => { setIsImageModalVisible(false); setSelectedImage(null); };
+
+  const handleShare = async () => {
+    if (!movie) return;
+    try {
+      await Share.share({
+        message: `Confira "${movie.title}" no WikiNerd!\nhttps://wikinerd.com.br/filmes/${slug}`,
+        url: `https://wikinerd.com.br/filmes/${slug}`,
+        title: `WikiNerd: ${movie.title}`
+      });
+    } catch (error: any) { console.log("Erro ao compartilhar:", error.message); }
+  };
+
+  const handleShareExistingReview = (reviewToShare: Review) => {
+    // Reutilizamos o estado justCreatedReview pois ele serve como "review selecionada para o modal"
+    setJustCreatedReview(reviewToShare);
+    setShareModalVisible(true);
+  };
+
+  const renderTabButton = (key: typeof activeTab, label: string) => (
+    <TouchableOpacity onPress={() => setActiveTab(key)}>
+      <Text style={[
+        key === activeTab ? styles.tabActive : styles.tabInactive,
+        {
+          backgroundColor: key === activeTab ? theme.colors.surfaceVariant : 'transparent',
+          color: key === activeTab ? theme.colors.onSurface : theme.colors.onSurfaceVariant
+        }
+      ]}>
+        {label}
+      </Text>
+    </TouchableOpacity>
+  );
+
+  const availableSections = [
+    { title: "Streaming", data: providers.filter(p => p.type === 'flatrate'), type: "flatrate" },
+    { title: "Comprar", data: providers.filter(p => p.type === 'buy'), type: "buy" },
+    { title: "Alugar", data: providers.filter(p => p.type === 'rent'), type: "rent" }
+  ].filter(s => s.data.length > 0);
+  const remainingOptionsCount = Math.max(0, availableSections.length - 1);
+
+  // --- Lógica de Reviews ---
 
   const fetchReviewsData = async (page = 1) => {
     if (!movie?.id) return;
-
-    // Se for a primeira página, ativa loading geral
     if (page === 1) setReviewsLoading(true);
 
     try {
@@ -53,7 +103,6 @@ export default function MediaDetailsScreen({ route }: any) {
         api.get(`https://api.wikinerd.com.br/api/movies/${movie.id}/reviews?page=${page}`)
       ];
 
-      // Busca stats apenas na primeira carga
       if (page === 1) {
         promises.push(api.get(`https://api.wikinerd.com.br/api/movies/${movie.id}/reviews/stats`));
       }
@@ -84,58 +133,51 @@ export default function MediaDetailsScreen({ route }: any) {
     }
   };
 
-  const handleDeleteReview = (id: string) => {
-    Alert.alert("Excluir", "Deseja realmente excluir sua avaliação?", [
-      { text: "Cancelar", style: "cancel" },
-      {
-        text: "Excluir", style: "destructive", onPress: async () => {
-          setReviews(prev => prev.filter(r => r.review_id !== id));
-        }
-      }
-    ]);
-  };
-
-  React.useEffect(() => {
+  useEffect(() => {
     if (activeTab === 'reviews' && reviews.length === 0) {
       fetchReviewsData();
     }
   }, [activeTab, movie]);
 
-  const openImageModal = (image: MediaImage) => { setSelectedImage(image); setIsImageModalVisible(true); };
-  const closeImageModal = () => { setIsImageModalVisible(false); setSelectedImage(null); };
-
-  const handleShare = async () => {
-    if (!movie) return;
-    try {
-      await Share.share({
-        message: `Confira "${movie.title}" no WikiNerd!\nhttps://wikinerd.com.br/filmes/${slug}`,
-        url: `https://wikinerd.com.br/filmes/${slug}`,
-        title: `WikiNerd: ${movie.title}`
-      });
-    } catch (error: any) { console.log("Erro ao compartilhar:", error.message); }
+  const handleDeleteReview = (id: string) => {
+    Alert.alert("Excluir", "Deseja realmente excluir sua avaliação?", [
+      { text: "Cancelar", style: "cancel" },
+      {
+        text: "Excluir", style: "destructive", onPress: async () => {
+          try {
+            await api.delete(`/users/movie/review/${id}`);
+            setReviews(prev => prev.filter(r => r.review_id !== id));
+          } catch (error) {
+            Alert.alert("Erro", "Não foi possível excluir a avaliação.");
+          }
+        }
+      }
+    ]);
   };
 
-  const renderTabButton = (key: typeof activeTab, label: string) => (
-    <TouchableOpacity onPress={() => setActiveTab(key)}>
-      <Text style={[
-        key === activeTab ? styles.tabActive : styles.tabInactive,
-        {
-          backgroundColor: key === activeTab ? theme.colors.surfaceVariant : 'transparent',
-          color: key === activeTab ? theme.colors.onSurface : theme.colors.onSurfaceVariant
-        }
-      ]}>
-        {label}
-      </Text>
-    </TouchableOpacity>
-  );
+  const handleReviewSuccess = (newReview: any) => {
+    // Aqui usamos o 'user' do AuthContext para garantir que temos nome e avatar
+    // Se 'user' for null (improvável se estiver logado), usamos um fallback seguro
+    const currentUserInfo = user || {
+      id: newReview.user_id,
+      name: "Usuário",
+      username: "usuario",
+      avatar: null
+    };
 
-  // Lógica de Providers
-  const availableSections = [
-    { title: "Streaming", data: providers.filter(p => p.type === 'flatrate'), type: "flatrate" },
-    { title: "Comprar", data: providers.filter(p => p.type === 'buy'), type: "buy" },
-    { title: "Alugar", data: providers.filter(p => p.type === 'rent'), type: "rent" }
-  ].filter(s => s.data.length > 0);
-  const remainingOptionsCount = Math.max(0, availableSections.length - 1);
+    const fullReview: Review = {
+      ...newReview,
+      review_id: newReview.id,
+      user: currentUserInfo,
+      feedback_counts: { useful: 0, not_useful: 0, report: 0, total: 0 },
+      user_feedback: null
+    };
+
+    setReviews(prev => [fullReview, ...prev]);
+
+    setJustCreatedReview(fullReview);
+    setTimeout(() => setShareModalVisible(true), 500);
+  };
 
   if (loading) {
     return (
@@ -329,7 +371,6 @@ export default function MediaDetailsScreen({ route }: any) {
             </>
           )}
 
-          {/* ... Outras Abas (Mantive a lógica idêntica, apenas compactada para leitura) ... */}
           {activeTab === "cast" && (
             <View>
               <Text style={[styles.sectionTitle, { color: theme.colors.onBackground }]}>Elenco Principal</Text>
@@ -394,10 +435,17 @@ export default function MediaDetailsScreen({ route }: any) {
           )}
 
           {activeTab === "reviews" && (
-            <View>
+            <View style={{ minHeight: 300 }}>
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
                 <Text style={[styles.sectionTitle, { color: theme.colors.onBackground, marginBottom: 0 }]}>Avaliações dos Usuários</Text>
-                <Button mode="contained" onPress={() => console.log('Escrever')} compact buttonColor="#3b82f6">Escrever Avaliação</Button>
+                <Button
+                  mode="contained"
+                  onPress={() => setWriteModalVisible(true)}
+                  compact
+                  buttonColor="#3b82f6"
+                >
+                  Escrever Avaliação
+                </Button>
               </View>
 
               {reviewsLoading && reviewsPage === 1 ? (
@@ -405,17 +453,18 @@ export default function MediaDetailsScreen({ route }: any) {
               ) : (
                 <>
                   {reviewStats && <ReviewStatsCard stats={reviewStats} />}
-
+                  
                   {reviews.length === 0 ? (
                     <Text style={[styles.metaText, { color: theme.colors.onSurfaceVariant, textAlign: 'center', marginTop: 20 }]}>
                       Seja o primeiro a avaliar este filme!
                     </Text>
                   ) : (
                     reviews.map((review) => (
-                      <ReviewCard
-                        key={review.review_id}
-                        review={review}
+                      <ReviewCard 
+                        key={review.review_id} 
+                        review={review} 
                         onDelete={handleDeleteReview}
+                        onShare={handleShareExistingReview} // PASSANDO A FUNÇÃO AQUI
                       />
                     ))
                   )}
@@ -438,6 +487,8 @@ export default function MediaDetailsScreen({ route }: any) {
         </View>
       </ScrollView>
 
+      {/* MODAIS */}
+
       <Modal visible={isImageModalVisible} transparent={true} onRequestClose={closeImageModal} animationType="fade">
         <View style={styles.modalContainer}>
           <TouchableOpacity style={styles.modalCloseArea} activeOpacity={1} onPress={closeImageModal}>
@@ -458,6 +509,25 @@ export default function MediaDetailsScreen({ route }: any) {
           mediaId={movie.id}
           mediaType="movie"
           mediaTitle={movie.title}
+        />
+      )}
+
+      {movie && (
+        <WriteReviewModal
+          visible={writeModalVisible}
+          onDismiss={() => setWriteModalVisible(false)}
+          onSubmitSuccess={handleReviewSuccess}
+          movieId={movie.id}
+          movieTitle={movie.title}
+        />
+      )}
+
+      {movie && justCreatedReview && (
+        <ShareReviewModal
+          visible={shareModalVisible}
+          onDismiss={() => setShareModalVisible(false)}
+          movie={movie}
+          review={justCreatedReview}
         />
       )}
     </>
