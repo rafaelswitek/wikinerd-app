@@ -436,13 +436,15 @@ export default function MediaDetailsScreen({ route }: any) {
 
           {activeTab === "reviews" && (
             <View style={{ minHeight: 300 }}>
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, marginTop: 8 }}>
                 <Text style={[styles.sectionTitle, { color: theme.colors.onBackground, marginBottom: 0 }]}>Avaliações dos Usuários</Text>
                 <Button
                   mode="contained"
                   onPress={() => setWriteModalVisible(true)}
                   compact
                   buttonColor="#3b82f6"
+                  labelStyle={{ fontWeight: 'bold' }}
+                  style={{ borderRadius: 6 }}
                 >
                   Escrever Avaliação
                 </Button>
@@ -453,16 +455,16 @@ export default function MediaDetailsScreen({ route }: any) {
               ) : (
                 <>
                   {reviewStats && <ReviewStatsCard stats={reviewStats} />}
-                  
+
                   {reviews.length === 0 ? (
                     <Text style={[styles.metaText, { color: theme.colors.onSurfaceVariant, textAlign: 'center', marginTop: 20 }]}>
                       Seja o primeiro a avaliar este filme!
                     </Text>
                   ) : (
                     reviews.map((review) => (
-                      <ReviewCard 
-                        key={review.review_id} 
-                        review={review} 
+                      <ReviewCard
+                        key={review.review_id}
+                        review={review}
                         onDelete={handleDeleteReview}
                         onShare={handleShareExistingReview} // PASSANDO A FUNÇÃO AQUI
                       />
