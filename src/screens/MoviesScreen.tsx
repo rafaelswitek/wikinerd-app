@@ -192,8 +192,6 @@ export default function MoviesScreen() {
         </View>
       </View>
 
-      {/* ... Resto da tela (FlatList, FilterModal) se mantém igual ... */}
-      {/* ... [CÓDIGO OMITIDO] ... */}
       {loading ? (
         <View style={styles.center}>
           <ActivityIndicator size="large" color={theme.colors.primary} />
@@ -204,7 +202,10 @@ export default function MoviesScreen() {
           keyExtractor={(item) => item.id.toString()}
           renderItem={({ item }) => (
             <View style={styles.cardWrapper}>
-              <MediaCard media={item} />
+              <MediaCard
+                media={item}
+                style={{ width: '100%', marginRight: 0 }}
+              />
             </View>
           )}
           numColumns={3}

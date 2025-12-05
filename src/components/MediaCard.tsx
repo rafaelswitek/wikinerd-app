@@ -1,5 +1,5 @@
 import React from "react";
-import { View, Image, TouchableOpacity } from "react-native";
+import { View, Image, TouchableOpacity, StyleProp, ViewStyle } from "react-native";
 import { Text, useTheme } from "react-native-paper";
 import { useNavigation } from "@react-navigation/native";
 import { Movie } from "../types/Movie";
@@ -10,9 +10,10 @@ export type Media = Movie | TvShow;
 
 interface Props {
   media: Media;
+  style?: StyleProp<ViewStyle>;
 }
 
-export default function MediaCard({ media }: Props) {
+export default function MediaCard({ media, style }: Props) {
   const navigation = useNavigation<any>();
   const theme = useTheme();
   
@@ -30,7 +31,7 @@ export default function MediaCard({ media }: Props) {
 
   return (
     <TouchableOpacity 
-      style={{ marginRight: 12, width: 140, paddingBottom: 8 }}
+      style={[{ marginRight: 12, width: 140, paddingBottom: 8 }, style]}
       onPress={handlePress}
       activeOpacity={0.7}
     >
@@ -58,11 +59,12 @@ export default function MediaCard({ media }: Props) {
       <Image
         source={{ uri: poster }}
         style={{
-          width: 140,
+          width: '100%',
           height: 210,
           borderRadius: 8,
           backgroundColor: theme.colors.surfaceVariant,
         }}
+        resizeMode="cover" 
       />
       <Text 
         variant="bodySmall" 
