@@ -6,6 +6,7 @@ import { api } from "../services/api";
 import { CastMember, CrewMember, Movie, Provider } from "../types/Movie";
 import { getCertificationColor, getMediaYear } from "../utils/helpers";
 import MediaCard from "../components/MediaCard";
+import AddToListModal from "../components/AddToListModal";
 
 const { width, height } = Dimensions.get("window");
 
@@ -176,6 +177,7 @@ export default function MediaDetailsScreen({ route }: any) {
   const [crew, setCrew] = useState<CrewMember[]>([]);
   const [images, setImages] = useState<MediaImage[]>([]);
   const [videos, setVideos] = useState<MediaVideo[]>([]);
+  const [listModalVisible, setListModalVisible] = useState(false);
 
   // Estado para interação do usuário
   const [userInteraction, setUserInteraction] = useState<UserInteraction | null>(null);
@@ -542,10 +544,21 @@ export default function MediaDetailsScreen({ route }: any) {
             mode="outlined"
             icon="share-variant"
             textColor={theme.colors.onSurfaceVariant}
-            style={[styles.gridButton, { borderColor: theme.colors.outline }]}
+            style={[styles.gridButton, { borderColor: theme.colors.outline, marginRight: 8 }]}
             onPress={handleShare}
           >
             Compartilhar
+          </Button>
+
+          {/* NOVO BOTÃO: ADICIONAR À LISTA */}
+          <Button
+            mode="outlined"
+            icon="playlist-plus"
+            textColor={theme.colors.onSurfaceVariant}
+            style={[styles.gridButton, { borderColor: theme.colors.outline }]}
+            onPress={() => setListModalVisible(true)}
+          >
+            Add à Lista
           </Button>
         </View>
 
@@ -848,6 +861,16 @@ export default function MediaDetailsScreen({ route }: any) {
           </TouchableOpacity>
         </View>
       </Modal>
+
+      {movie && (
+        <AddToListModal
+          visible={listModalVisible}
+          onDismiss={() => setListModalVisible(false)}
+          mediaId={movie.id}
+          mediaType="movie" // Ajuste se for série dinamicamente se necessário
+          mediaTitle={movie.title}
+        />
+      )}
     </>
   );
 }
