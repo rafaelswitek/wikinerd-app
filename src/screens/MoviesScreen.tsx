@@ -62,7 +62,6 @@ export default function MoviesScreen() {
         page: pageNumber,
         per_page: 21,
         search: debouncedTerm || undefined,
-        year: filters.year,
         order_by: orderBy,
         direction: direction,
       };
@@ -70,6 +69,21 @@ export default function MoviesScreen() {
       if (filters.genres?.length) params['genres[]'] = filters.genres;
       if (filters.streamings?.length) params['providers[]'] = filters.streamings;
       if (filters.classification?.length) params['certification[]'] = filters.classification;
+      if (filters.countries?.length) params['countries[]'] = filters.countries;
+
+      if (filters.yearData) {
+        const { mode, specific, decade, rangeStart, rangeEnd } = filters.yearData;
+
+        if (mode === 'specific' && specific) {
+          params['year'] = specific;
+        }
+        else if (mode === 'decade' && decade) {
+          params['year'] = decade.endsWith('s') ? decade : `${decade}s`;
+        }
+        else if (mode === 'range' && rangeStart && rangeEnd) {
+          params['year'] = `${rangeStart}-${rangeEnd}`;
+        }
+      }
 
       const response = await api.get("/movies", { params });
 
@@ -114,11 +128,17 @@ export default function MoviesScreen() {
     return opt ? `${opt.label} (${direction === 'asc' ? '↑' : '↓'})` : 'Ordenar';
   };
 
+  const hasActiveFilters = () => {
+    const hasArrays = ['genres', 'streamings', 'classification', 'countries'].some(
+      key => filters[key] && filters[key].length > 0
+    );
+    const hasYear = filters.yearData && (filters.yearData.specific || filters.yearData.decade || (filters.yearData.rangeStart && filters.yearData.rangeEnd));
+    return hasArrays || hasYear;
+  };
+
   return (
     <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
 
-      {/* Header Customizado */}
-      {/* 3. ADICIONAR O PADDING TOP DINÂMICO ABAIXO */}
       <View style={[
         styles.header,
         {
@@ -127,7 +147,6 @@ export default function MoviesScreen() {
         }
       ]}>
         <View style={styles.headerTop}>
-          {/* O resto do conteúdo do header continua igual */}
           <Button icon="menu" textColor={theme.colors.onSurface} onPress={() => navigation.dispatch(DrawerActions.openDrawer())} compact>
             Menu
           </Button>
@@ -152,9 +171,7 @@ export default function MoviesScreen() {
           inputStyle={{ minHeight: 0 }}
         />
 
-        {/* ... Resto do Header ... */}
         <View style={styles.controlsRow}>
-          {/* ... Botões de filtro e sort ... */}
           <Button
             icon="filter-variant"
             mode="outlined"
@@ -162,7 +179,7 @@ export default function MoviesScreen() {
             style={styles.controlButton}
             textColor={theme.colors.onSurface}
           >
-            Filtros {(Object.keys(filters).length > 0 && Object.values(filters).some((v: any) => v.length > 0)) ? '•' : ''}
+            Filtros {hasActiveFilters() ? '•' : ''}
           </Button>
 
           <Menu
