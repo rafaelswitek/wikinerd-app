@@ -1,11 +1,12 @@
 import React, { useContext } from "react";
 import { View, TouchableOpacity, ScrollView } from "react-native";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
-import { createDrawerNavigator, DrawerContentComponentProps } from "@react-navigation/drawer";
+import { createDrawerNavigator, DrawerContentComponentProps, useDrawerStatus } from "@react-navigation/drawer";
 import { useNavigation } from "@react-navigation/native";
 import { Text, Avatar, useTheme, Divider } from "react-native-paper";
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { StatusBar } from 'expo-status-bar';
 
 import MediaTabs from "../components/MediaTabs";
 import Header from "../components/Header";
@@ -18,8 +19,16 @@ const Drawer = createDrawerNavigator();
 function MainTabs() {
   const theme = useTheme();
 
+  const isDrawerOpen = useDrawerStatus() === 'open';
+
   return (
     <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
+      <StatusBar
+        style={isDrawerOpen ? "light" : (theme.dark ? "light" : "dark")}
+        backgroundColor={isDrawerOpen ? "#02060e" : theme.colors.surface}
+        translucent
+      />
+
       <Header />
       <Tab.Navigator
         initialRouteName="Filmes"
@@ -120,7 +129,6 @@ function CustomDrawerContent(props: DrawerContentComponentProps) {
 
   return (
     <View style={{ flex: 1, backgroundColor: '#02060e' }}>
-
       <View style={{
         marginHorizontal: 16,
         marginBottom: 16,
