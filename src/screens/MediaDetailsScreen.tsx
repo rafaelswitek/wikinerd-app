@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { ScrollView, View, StyleSheet, StatusBar, TouchableOpacity, Linking, Modal, FlatList, Share, Image, Dimensions } from "react-native";
+import { ScrollView, View, StyleSheet, StatusBar, TouchableOpacity, Linking, Modal, FlatList, Share, Image, Dimensions, Alert } from "react-native";
 import { Text, ActivityIndicator, Chip, Divider, useTheme, Button } from "react-native-paper";
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 
@@ -45,14 +45,15 @@ export default function MediaDetailsScreen({ route }: any) {
   const fetchReviewsData = async (page = 1) => {
     if (!movie?.id) return;
 
+    // Se for a primeira página, ativa loading geral
     if (page === 1) setReviewsLoading(true);
 
     try {
-      // Se for a primeira página, busca também as estatísticas
       const promises: Promise<any>[] = [
         api.get(`https://api.wikinerd.com.br/api/movies/${movie.id}/reviews?page=${page}`)
       ];
 
+      // Busca stats apenas na primeira carga
       if (page === 1) {
         promises.push(api.get(`https://api.wikinerd.com.br/api/movies/${movie.id}/reviews/stats`));
       }
@@ -62,12 +63,11 @@ export default function MediaDetailsScreen({ route }: any) {
 
       if (page === 1) {
         setReviews(reviewsResponse.data);
-        setReviewStats(results[1].data);
+        if (results[1]) setReviewStats(results[1].data);
       } else {
         setReviews(prev => [...prev, ...reviewsResponse.data]);
       }
 
-      // Verifica se tem mais páginas (meta.current_page < meta.last_page)
       setHasMoreReviews(reviewsResponse.meta.current_page < reviewsResponse.meta.last_page);
       setReviewsPage(page);
 
@@ -82,6 +82,17 @@ export default function MediaDetailsScreen({ route }: any) {
     if (!reviewsLoading && hasMoreReviews) {
       fetchReviewsData(reviewsPage + 1);
     }
+  };
+
+  const handleDeleteReview = (id: string) => {
+    Alert.alert("Excluir", "Deseja realmente excluir sua avaliação?", [
+      { text: "Cancelar", style: "cancel" },
+      {
+        text: "Excluir", style: "destructive", onPress: async () => {
+          setReviews(prev => prev.filter(r => r.review_id !== id));
+        }
+      }
+    ]);
   };
 
   React.useEffect(() => {
@@ -401,7 +412,11 @@ export default function MediaDetailsScreen({ route }: any) {
                     </Text>
                   ) : (
                     reviews.map((review) => (
-                      <ReviewCard key={review.review_id} review={review} />
+                      <ReviewCard
+                        key={review.review_id}
+                        review={review}
+                        onDelete={handleDeleteReview}
+                      />
                     ))
                   )}
 

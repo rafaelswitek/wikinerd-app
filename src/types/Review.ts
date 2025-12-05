@@ -1,5 +1,3 @@
-// src/types/Review.ts
-
 export interface RatingCounts {
   "1": number;
   "2": number;
@@ -27,9 +25,17 @@ export interface UserInfo {
   avatar: string | null;
 }
 
+export interface FeedbackCounts {
+  useful: number;
+  not_useful: number;
+  report: number;
+  total: number;
+}
+
 export interface Review {
   review_id: string;
   user: UserInfo;
+  movie_id: string;
   overall_rating: number;
   story_rating?: number;
   acting_rating?: number;
@@ -41,7 +47,7 @@ export interface Review {
   has_spoilers: boolean;
   created_at: string;
   updated_at: string;
-  useful_count: number;
-  not_useful_count: number;
-  report_count: number;
+  
+  feedback_counts: FeedbackCounts;
+  user_feedback: 'useful' | 'not_useful' | 'report' | null;
 }

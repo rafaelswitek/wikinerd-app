@@ -11,7 +11,6 @@ interface Props {
 export default function ReviewStatsCard({ stats }: Props) {
   const theme = useTheme();
 
-  // Calcular porcentagem para a barra de progresso (0 a 1)
   const total = stats.total_reviews > 0 ? stats.total_reviews : 1;
   const getPercent = (count: number) => count / total;
 
@@ -41,8 +40,8 @@ export default function ReviewStatsCard({ stats }: Props) {
           {renderStars(stats.overall_average, 16)}
           <Text style={{ color: theme.colors.secondary, fontSize: 12, marginTop: 2 }}>de 5 estrelas</Text>
         </View>
-        <View style={{ justifyContent: 'center' }}>
-            <Icon name="account-outline" size={16} color={theme.colors.onSurfaceVariant} style={{ alignSelf: 'flex-end' }}/>
+        <View style={{ justifyContent: 'center', alignItems: 'flex-end' }}>
+            <Icon name="account-outline" size={16} color={theme.colors.onSurfaceVariant}/>
             <Text style={{ color: theme.colors.onSurfaceVariant }}>{stats.total_reviews} avaliações</Text>
         </View>
       </View>
