@@ -5,6 +5,7 @@ import { createDrawerNavigator, DrawerContentComponentProps } from "@react-navig
 import { useNavigation } from "@react-navigation/native";
 import { Text, Avatar, useTheme, Divider } from "react-native-paper";
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import MediaTabs from "../components/MediaTabs";
 import Header from "../components/Header";
@@ -96,7 +97,7 @@ const CustomDrawerItem = ({ label, icon, isComingSoon, onPress, active }: Drawer
 
       {isComingSoon && (
         <View style={{
-          backgroundColor: '#3f2c1d', 
+          backgroundColor: '#3f2c1d',
           borderRadius: 12,
           paddingHorizontal: 8,
           paddingVertical: 2,
@@ -115,15 +116,23 @@ function CustomDrawerContent(props: DrawerContentComponentProps) {
   const { navigation } = props;
   const { user, signOut } = useContext(AuthContext);
 
+  const insets = useSafeAreaInsets();
+
   return (
     <View style={{ flex: 1, backgroundColor: '#02060e' }}>
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 16, paddingTop: 40 }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-          <Text style={{ color: 'white', fontWeight: 'bold', fontSize: 18 }}>WikiNerd</Text>
-        </View>
-      </View>
 
-      <View style={{ marginHorizontal: 16, marginBottom: 16, padding: 12, backgroundColor: '#0f172a', borderRadius: 8, flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: '#1e293b' }}>
+      <View style={{
+        marginHorizontal: 16,
+        marginBottom: 16,
+        marginTop: Math.max(insets.top, 20) + 10,
+        padding: 12,
+        backgroundColor: '#0f172a',
+        borderRadius: 8,
+        flexDirection: 'row',
+        alignItems: 'center',
+        borderWidth: 1,
+        borderColor: '#1e293b'
+      }}>
         {user?.avatar ? (
           <Avatar.Image size={40} source={{ uri: user.avatar }} style={{ backgroundColor: theme.colors.primary }} />
         ) : (
@@ -169,7 +178,7 @@ function CustomDrawerContent(props: DrawerContentComponentProps) {
         <CustomDrawerItem label="Perfil" icon="account-outline" onPress={() => navigation.navigate("Profile")} />
         <CustomDrawerItem label="Configurações" icon="cog-outline" onPress={() => console.log("Config")} />
 
-        <View style={{ marginTop: 20, paddingHorizontal: 16 }}>
+        <View style={{ marginTop: 20, paddingHorizontal: 16, paddingBottom: 20 + insets.bottom }}>
           <TouchableOpacity
             style={{
               flexDirection: 'row',
