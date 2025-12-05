@@ -177,11 +177,13 @@ export default function MediaDetailsScreen({ route }: any) {
   const [crew, setCrew] = useState<CrewMember[]>([]);
   const [images, setImages] = useState<MediaImage[]>([]);
   const [videos, setVideos] = useState<MediaVideo[]>([]);
-  const [listModalVisible, setListModalVisible] = useState(false);
 
   // Estado para interação do usuário
   const [userInteraction, setUserInteraction] = useState<UserInteraction | null>(null);
   const [interactionLoading, setInteractionLoading] = useState(false);
+
+  // Estado para Modal de Listas
+  const [listModalVisible, setListModalVisible] = useState(false);
 
   const [collectionData, setCollectionData] = useState<CollectionResponse | null>(null);
 
@@ -492,20 +494,31 @@ export default function MediaDetailsScreen({ route }: any) {
                 <Text style={[styles.ratingCount, { color: theme.colors.secondary }]}> ({movie.rating_tmdb_count})</Text>
               </View>
 
+              {/* Botão de Compartilhar foi movido para cá */}
               <Button
-                {...getButtonProps(userInteraction?.status === 'want_to_watch', theme.colors.primary)}
-                icon={userInteraction?.status === 'want_to_watch' ? "bookmark" : "bookmark-outline"}
-                onPress={() => handleInteraction('status', 'want_to_watch')}
-                loading={interactionLoading}
-                style={[styles.actionButton, userInteraction?.status !== 'want_to_watch' && { borderColor: theme.colors.outline }]}
+                mode="outlined"
+                icon="share-variant"
+                textColor={theme.colors.onBackground}
+                style={[styles.actionButton, { borderColor: theme.colors.outline }]}
+                onPress={handleShare}
               >
-                Quero Ver
+                Compartilhar
               </Button>
             </View>
           </View>
         </View>
 
-        <View style={styles.actionsBar}>
+        {/* Linha 1: Quero Ver e Assistido */}
+        <View style={[styles.actionsBar, { marginTop: 16 }]}>
+          <Button
+            {...getButtonProps(userInteraction?.status === 'want_to_watch', theme.colors.primary)}
+            icon={userInteraction?.status === 'want_to_watch' ? "bookmark" : "bookmark-outline"}
+            onPress={() => handleInteraction('status', 'want_to_watch')}
+            loading={interactionLoading}
+            style={[styles.gridButton, userInteraction?.status !== 'want_to_watch' && { borderColor: theme.colors.outline }]}
+          >
+            Quero Ver
+          </Button>
           <Button
             {...getButtonProps(userInteraction?.status === 'watched', '#0ea5e9')}
             icon="check"
@@ -513,6 +526,10 @@ export default function MediaDetailsScreen({ route }: any) {
           >
             Assistido
           </Button>
+        </View>
+
+        {/* Linha 2: Gostei e Não Gostei */}
+        <View style={[styles.actionsBar, { marginTop: 8 }]}>
           <Button
             {...getButtonProps(userInteraction?.feedback === 'liked', '#22c55e')}
             icon="thumb-up"
@@ -520,8 +537,6 @@ export default function MediaDetailsScreen({ route }: any) {
           >
             Gostei
           </Button>
-        </View>
-        <View style={[styles.actionsBar, { marginTop: 8 }]}>
           <Button
             {...getButtonProps(userInteraction?.feedback === 'not_like', '#ef4444')}
             icon="thumb-down"
@@ -529,6 +544,10 @@ export default function MediaDetailsScreen({ route }: any) {
           >
             Não Gostei
           </Button>
+        </View>
+
+        {/* Linha 3: Favorito e Adicionar à Lista */}
+        <View style={[styles.actionsBar, { marginTop: 8 }]}>
           <Button
             {...getButtonProps(userInteraction?.feedback === 'favorite', '#eab308')}
             icon={userInteraction?.feedback === 'favorite' ? "star" : "star-outline"}
@@ -536,21 +555,7 @@ export default function MediaDetailsScreen({ route }: any) {
           >
             Favorito
           </Button>
-        </View>
 
-        {/* Botão de Compartilhar */}
-        <View style={[styles.actionsBar, { marginTop: 8 }]}>
-          <Button
-            mode="outlined"
-            icon="share-variant"
-            textColor={theme.colors.onSurfaceVariant}
-            style={[styles.gridButton, { borderColor: theme.colors.outline, marginRight: 8 }]}
-            onPress={handleShare}
-          >
-            Compartilhar
-          </Button>
-
-          {/* NOVO BOTÃO: ADICIONAR À LISTA */}
           <Button
             mode="outlined"
             icon="playlist-plus"
@@ -569,6 +574,7 @@ export default function MediaDetailsScreen({ route }: any) {
         </View>
 
         <View style={[styles.section, { borderTopColor: theme.colors.outlineVariant }]}>
+          {/* ... Resto das abas e conteúdo ... */}
           <View style={[styles.tabBar, { backgroundColor: theme.colors.surface }]}>
             {renderTabButton("about", "Sobre")}
             {renderTabButton("cast", "Elenco")}
@@ -836,6 +842,8 @@ export default function MediaDetailsScreen({ route }: any) {
         </View>
       </ScrollView>
 
+      {/* MODAIS */}
+
       <Modal
         visible={isModalVisible}
         transparent={true}
@@ -862,12 +870,13 @@ export default function MediaDetailsScreen({ route }: any) {
         </View>
       </Modal>
 
+      {/* Modal de Adicionar à Lista */}
       {movie && (
         <AddToListModal
           visible={listModalVisible}
           onDismiss={() => setListModalVisible(false)}
           mediaId={movie.id}
-          mediaType="movie" // Ajuste se for série dinamicamente se necessário
+          mediaType="movie"
           mediaTitle={movie.title}
         />
       )}
