@@ -12,15 +12,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const signOut = useCallback(async () => {
     try {
-      // Tenta avisar o backend
-      // O interceptor vai ignorar se isso der 401 para evitar loop
       await api.post("/logout");
     } catch (error) {
-      console.log("Erro ao fazer logout na API (token provavelmente já expirado)", error);
+      console.log("Erro ao fazer logout na API", error);
     } finally {
-      // Limpeza local mandatória
       await AsyncStorage.removeItem("@wikinerd:token");
-      // Importante: garantir que o header seja limpo para futuras requisições (ex: novo login)
       delete api.defaults.headers.Authorization;
       setToken(null);
       setUser(null);
@@ -37,26 +33,37 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   }
 
-  // 1. Interceptor para Logout Automático (Refresh/Expiração)
   useEffect(() => {
     const interceptorId = api.interceptors.response.use(
       (response) => response,
       async (error) => {
         const originalRequest = error.config;
 
-        // Se for 401 E NÃO for a própria chamada de logout, fazemos o logout
         if (
           error.response?.status === 401 &&
           originalRequest &&
-          !originalRequest.url?.includes("/logout")
+          !originalRequest._retry &&
+          !originalRequest.url?.includes("/refresh") &&
+          !originalRequest.url?.includes("/login")
         ) {
-          console.log("Token expirado. Realizando logout local.");
+          originalRequest._retry = true;
 
-          // Removemos o token do storage imediatamente para evitar que outras chamadas em paralelo tentem usar
-          await AsyncStorage.removeItem("@wikinerd:token");
+          try {
+            const response = await api.post("/refresh");
+            const { access_token } = response.data;
 
-          // Chamamos o signOut para limpar o estado e tentar notificar o back (sem loop)
-          await signOut();
+            await AsyncStorage.setItem("@wikinerd:token", access_token);
+            api.defaults.headers.Authorization = `Bearer ${access_token}`;
+            setToken(access_token);
+
+            originalRequest.headers.Authorization = `Bearer ${access_token}`;
+            
+            return api(originalRequest);
+          } catch (refreshError) {
+            console.log("Falha no refresh token. Realizando logout.");
+            await signOut();
+            return Promise.reject(refreshError);
+          }
         }
         return Promise.reject(error);
       }
@@ -67,7 +74,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     };
   }, [signOut]);
 
-  // 2. Carregamento Inicial (Boot)
   useEffect(() => {
     async function loadStorageData() {
       const storedToken = await AsyncStorage.getItem("@wikinerd:token");
@@ -80,15 +86,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           const response = await api.get("/users");
           setUser(response.data.data);
         } catch (error) {
-          console.log("Erro ao carregar usuário no boot: Token inválido.");
-          await signOut(); // Usa o signOut seguro que criamos
+          console.log("Erro ao carregar usuário no boot.");
         }
       }
       setLoading(false);
     }
 
     loadStorageData();
-  }, [signOut]);
+  }, []);
 
   async function signIn(response: AuthResponse) {
     const { access_token } = response;
