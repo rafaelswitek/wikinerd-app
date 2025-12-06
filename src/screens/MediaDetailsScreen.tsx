@@ -323,7 +323,7 @@ export default function MediaDetailsScreen({ route }: any) {
                   <Text style={[styles.sectionTitle, { color: theme.colors.onBackground }]}>Filmes da Coleção</Text>
                   <Text style={[styles.providerSubTitle, { marginBottom: 8, color: theme.colors.secondary }]}>{collectionData.name}</Text>
                   <FlatList
-                    data={collectionData.movies}
+                    data={collectionData.movies.filter(m => m.id !== movie.id)}
                     horizontal
                     showsHorizontalScrollIndicator={false}
                     keyExtractor={(item) => item.id.toString()}
