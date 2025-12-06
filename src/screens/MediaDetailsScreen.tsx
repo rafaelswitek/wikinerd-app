@@ -5,7 +5,7 @@ import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 
 import { useMediaDetails } from "../hooks/useMediaDetails";
 import { getCertificationColor, formatCurrency, formatRuntime, formatDate, getSocialData } from "../utils/helpers";
-import { Provider } from "../types/Movie";
+import { Country, Language, Provider } from "../types/Movie";
 import { MediaImage } from "../types/Interactions";
 import { AuthContext } from "../context/AuthContext";
 
@@ -91,7 +91,6 @@ export default function MediaDetailsScreen({ route }: any) {
   const remainingOptionsCount = Math.max(0, availableSections.length - 1);
 
   // --- Lógica de Reviews ---
-
   const fetchReviewsData = async (page = 1) => {
     if (!movie?.id) return;
     if (page === 1) setReviewsLoading(true);
@@ -146,7 +145,6 @@ export default function MediaDetailsScreen({ route }: any) {
             await api.delete(`/users/movie/review/${id}`);
             setReviews(prev => prev.filter(r => r.review_id !== id));
 
-            // Atualiza as estatísticas após excluir
             if (movie?.id) {
               try {
                 const statsResponse = await api.get(`https://api.wikinerd.com.br/api/movies/${movie.id}/reviews/stats`);
@@ -155,7 +153,6 @@ export default function MediaDetailsScreen({ route }: any) {
                 console.log("Erro ao atualizar estatísticas:", statsError);
               }
             }
-
           } catch (error) {
             Alert.alert("Erro", "Não foi possível excluir a avaliação.");
           }
@@ -182,7 +179,6 @@ export default function MediaDetailsScreen({ route }: any) {
 
     setReviews(prev => [fullReview, ...prev]);
 
-    // Ao criar review, também é bom atualizar as stats para refletir a nova nota
     if (movie?.id) {
       api.get(`https://api.wikinerd.com.br/api/movies/${movie.id}/reviews/stats`)
         .then(res => setReviewStats(res.data))
@@ -209,10 +205,16 @@ export default function MediaDetailsScreen({ route }: any) {
     );
   }
 
+  // Helpers de Equipe
   const getCrewByJob = (jobs: string[]) => crew.filter(c => jobs.includes(c.job.job)).map(c => c.name).join(", ");
+
   const photography = getCrewByJob(["Director of Photography", "Cinematography"]);
   const music = getCrewByJob(["Original Music Composer", "Music"]);
   const producers = crew.filter(c => c.job.job === "Producer").slice(0, 3).map(c => c.name).join(", ");
+
+  // NOVOS HELPERS PARA DIREÇÃO E ROTEIRO
+  const directors = getCrewByJob(["Director"]);
+  const writers = getCrewByJob(["Screenplay", "Writer", "Story"]);
 
   return (
     <>
@@ -249,20 +251,33 @@ export default function MediaDetailsScreen({ route }: any) {
               <Text style={[styles.sectionTitle, { color: theme.colors.onBackground }]}>Sinopse</Text>
               <Text style={[styles.bodyText, { color: theme.colors.onSurfaceVariant }]}>{movie.overview}</Text>
 
-              {collectionData && (
-                <View style={styles.innerSection}>
-                  <Text style={[styles.sectionTitle, { color: theme.colors.onBackground }]}>Filmes da Coleção</Text>
-                  <Text style={[styles.providerSubTitle, { marginBottom: 8, color: theme.colors.secondary }]}>{collectionData.name}</Text>
-                  <FlatList
-                    data={collectionData.movies}
-                    horizontal
-                    showsHorizontalScrollIndicator={false}
-                    keyExtractor={(item) => item.id.toString()}
-                    renderItem={({ item }) => <MediaCard media={item} />}
-                    contentContainerStyle={{ paddingVertical: 8 }}
-                  />
+              {directors.length > 0 && (
+                <View style={{ marginTop: 20 }}>
+                  <Text style={[styles.sectionTitle, { color: theme.colors.onBackground, fontSize: 16, marginBottom: 4 }]}>Direção</Text>
+                  <Text style={[styles.bodyText, { color: theme.colors.onSurfaceVariant, lineHeight: 20 }]}>{directors}</Text>
                 </View>
               )}
+
+              {writers.length > 0 && (
+                <View style={{ marginTop: 16 }}>
+                  <Text style={[styles.sectionTitle, { color: theme.colors.onBackground, fontSize: 16, marginBottom: 4 }]}>Roteiro</Text>
+                  <Text style={[styles.bodyText, { color: theme.colors.onSurfaceVariant, lineHeight: 20 }]}>{writers}</Text>
+                </View>
+              )}
+
+              <View style={styles.innerSection}>
+                <Text style={[styles.sectionTitle, { color: theme.colors.onBackground }]}>Informações Técnicas</Text>
+                <View style={styles.techGrid}>
+                  <View style={styles.techItem}><Text style={[styles.techLabel, { color: theme.colors.secondary }]}>País de Origem</Text><Text style={[styles.techValue, { color: theme.colors.onBackground }]}>{movie?.countries && movie.countries.length > 0 ? movie.countries.map((country: Country) => country.name).join(', ') : "Desconhecido"}</Text></View>
+                  <View style={styles.techItem}><Text style={[styles.techLabel, { color: theme.colors.secondary }]}>Idioma Original</Text><Text style={[styles.techValue, { color: theme.colors.onBackground }]}>{movie?.languages && movie.languages.length > 0 ? movie.languages.map((language: Language) => language.name).join(', ') : "Desconhecido"}</Text></View>
+                  <View style={styles.techItem}><Text style={[styles.techLabel, { color: theme.colors.secondary }]}>Orçamento</Text><Text style={[styles.techValue, { color: theme.colors.onBackground }]}>{formatCurrency(movie.budget)}</Text></View>
+                  <View style={styles.techItem}><Text style={[styles.techLabel, { color: theme.colors.secondary }]}>Bilheteria</Text><Text style={[styles.techValue, { color: theme.colors.onBackground }]}>{formatCurrency(movie.revenue)}</Text></View>
+                  <View style={styles.techItem}><Text style={[styles.techLabel, { color: theme.colors.secondary }]}>Status</Text><Text style={[styles.techValue, { color: theme.colors.onBackground }]}>{movie.status}</Text></View>
+                  <View style={styles.techItem}><Text style={[styles.techLabel, { color: theme.colors.secondary }]}>Lançamento</Text><Text style={[styles.techValue, { color: theme.colors.onBackground }]}>{formatDate(movie.release_date)}</Text></View>
+                  <View style={styles.techItem}><Text style={[styles.techLabel, { color: theme.colors.secondary }]}>Duração</Text><Text style={[styles.techValue, { color: theme.colors.onBackground }]}>{formatRuntime(movie.runtime)}</Text></View>
+                  <View style={styles.techItem}><Text style={[styles.techLabel, { color: theme.colors.secondary }]}>Conteúdo Adulto</Text><Text style={[styles.techValue, { color: theme.colors.onBackground }]}>{movie.adult_content ? "Sim" : "Não"}</Text></View>
+                </View>
+              </View>
 
               <View style={styles.innerSection}>
                 <View style={styles.providersHeader}>
@@ -303,17 +318,20 @@ export default function MediaDetailsScreen({ route }: any) {
                 )}
               </View>
 
-              <View style={styles.innerSection}>
-                <Text style={[styles.sectionTitle, { color: theme.colors.onBackground }]}>Informações Técnicas</Text>
-                <View style={styles.techGrid}>
-                  <View style={styles.techItem}><Text style={[styles.techLabel, { color: theme.colors.secondary }]}>País de Origem</Text><Text style={[styles.techValue, { color: theme.colors.onBackground }]}>Estados Unidos</Text></View>
-                  <View style={styles.techItem}><Text style={[styles.techLabel, { color: theme.colors.secondary }]}>Orçamento</Text><Text style={[styles.techValue, { color: theme.colors.onBackground }]}>{formatCurrency(movie.budget)}</Text></View>
-                  <View style={styles.techItem}><Text style={[styles.techLabel, { color: theme.colors.secondary }]}>Bilheteria</Text><Text style={[styles.techValue, { color: theme.colors.onBackground }]}>{formatCurrency(movie.revenue)}</Text></View>
-                  <View style={styles.techItem}><Text style={[styles.techLabel, { color: theme.colors.secondary }]}>Status</Text><Text style={[styles.techValue, { color: theme.colors.onBackground }]}>{movie.status}</Text></View>
-                  <View style={styles.techItem}><Text style={[styles.techLabel, { color: theme.colors.secondary }]}>Lançamento</Text><Text style={[styles.techValue, { color: theme.colors.onBackground }]}>{formatDate(movie.release_date)}</Text></View>
-                  <View style={styles.techItem}><Text style={[styles.techLabel, { color: theme.colors.secondary }]}>Duração</Text><Text style={[styles.techValue, { color: theme.colors.onBackground }]}>{formatRuntime(movie.runtime)}</Text></View>
+              {collectionData && (
+                <View style={styles.innerSection}>
+                  <Text style={[styles.sectionTitle, { color: theme.colors.onBackground }]}>Filmes da Coleção</Text>
+                  <Text style={[styles.providerSubTitle, { marginBottom: 8, color: theme.colors.secondary }]}>{collectionData.name}</Text>
+                  <FlatList
+                    data={collectionData.movies}
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    keyExtractor={(item) => item.id.toString()}
+                    renderItem={({ item }) => <MediaCard media={item} />}
+                    contentContainerStyle={{ paddingVertical: 8 }}
+                  />
                 </View>
-              </View>
+              )}
 
               <View style={[styles.cardContainer, { backgroundColor: theme.colors.surface, borderColor: theme.colors.outlineVariant }]}>
                 <Text style={[styles.cardTitle, { color: theme.colors.onSurface }]}>Classificação Etária</Text>

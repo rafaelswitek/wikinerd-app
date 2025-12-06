@@ -49,6 +49,7 @@ export interface Movie {
   };
   overview: string;
   runtime: number;
+  adult_content: boolean;
   rating_tmdb_average: string;
   rating_tmdb_count?: number;
   release_date: string;
@@ -61,6 +62,8 @@ export interface Movie {
   keywords?: Keyword[];
   external_ids?: ExternalId[];
   collection?: Collection;
+  countries?: Country[];
+  languages?: Language[];
 }
 
 export interface CastMember {
@@ -97,4 +100,17 @@ export interface MoviesResponse {
   prev_page_url: string | null;
   to: number;
   total: number;
+}
+
+export interface Country {
+  id: string;
+  slug: string;
+  name: string;
+  origin: boolean;
+}
+
+export interface Language {
+  id: string;
+  name: string;
+  original_name: string;
 }
