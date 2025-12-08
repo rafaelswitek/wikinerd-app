@@ -52,6 +52,35 @@ const CHART_COLORS = [
     "#f97316"
 ];
 
+// Mapeamento de Status para Labels e Cores amigáveis
+const STATUS_CONFIG: Record<string, { label: string; icon: string; color: string }> = {
+    // Movies / TV
+    'watched': { label: 'Assistidos', icon: 'check-circle-outline', color: '#16a34a' },
+    'want_to_watch': { label: 'Quero Ver', icon: 'bookmark-outline', color: '#3b82f6' },
+    'watching': { label: 'Assistindo', icon: 'play-circle-outline', color: '#f59e0b' },
+    // Games
+    'completed': { label: 'Concluídos', icon: 'trophy-outline', color: '#16a34a' },
+    'want_to_play': { label: 'Quero Jogar', icon: 'controller', color: '#3b82f6' },
+    'playing': { label: 'Jogando', icon: 'gamepad-variant-outline', color: '#f59e0b' },
+    'paused': { label: 'Pausados', icon: 'pause-circle-outline', color: '#64748b' },
+    'dropped': { label: 'Abandonados', icon: 'close-circle-outline', color: '#ef4444' },
+    // Books
+    'want_to_read': { label: 'Quero Ler', icon: 'book-plus-outline', color: '#3b82f6' },
+    'reading': { label: 'Lendo', icon: 'book-open-page-variant-outline', color: '#f59e0b' },
+    // Podcasts
+    'want_to_listen': { label: 'Quero Ouvir', icon: 'playlist-music-outline', color: '#3b82f6' },
+    'listening': { label: 'Ouvindo', icon: 'headphones', color: '#f59e0b' },
+};
+
+// Fallback para status desconhecidos
+const getStatusConfig = (status: string) => {
+    return STATUS_CONFIG[status] || {
+        label: status.replace(/_/g, ' '), // fallback: troca underline por espaço
+        icon: 'circle-outline',
+        color: '#64748b'
+    };
+};
+
 export default function ProfileScreen({ navigation }: any) {
     const theme = useTheme();
     const { user } = useContext(AuthContext);
@@ -112,48 +141,64 @@ export default function ProfileScreen({ navigation }: any) {
     ): MediaStatsData => {
         const general = generalRaw?.[type] || {};
 
-        let totalValue = 0;
-        let timeLabel = "Horas";
-        let timeIcon = "clock-outline";
-
         const timeArrays = general.runtime || general.playtime || general.page_count || general.duration || [];
 
-        if (type === 'books') {
-            timeLabel = "Páginas";
-            timeIcon = "book-open-page-variant-outline";
-            totalValue = timeArrays.reduce((acc: number, curr: any) => acc + (curr.total_pages || 0), 0);
-        } else {
-            const totalMinutes = timeArrays.reduce((acc: number, curr: any) =>
-                acc + (curr.total_runtime || curr.total_playtime || curr.total_duration || 0), 0);
-            totalValue = Math.floor(totalMinutes / 60);
-        }
-
+        // 1. Destaques principais (Ano e Sequências)
         const highlights: StatHighlight[] = [
             {
                 label: "Ano Favorito",
                 value: general.mostWatchedYear || general.mostPlayedYear || general.mostReadedYear || general.mostListenedYear || '-',
                 icon: "calendar-star",
-                color: "#3b82f6"
+                color: "#8b5cf6" // Roxo
             },
             {
                 label: "Sequência Atual",
                 value: general.streak ? `${general.streak.current_streak} dias` : '0 dias',
                 icon: "fire",
-                color: "#f97316"
+                color: "#f97316" // Laranja
             },
             {
                 label: "Maior Sequência",
                 value: general.streak ? `${general.streak.longest_streak} dias` : '0 dias',
-                icon: "trophy-outline",
-                color: "#eab308"
-            },
-            {
-                label: `Total ${timeLabel}`,
-                value: type === 'books' ? totalValue : `${totalValue}h`,
-                icon: timeIcon,
-                color: "#10b981"
+                icon: "trophy-variant-outline",
+                color: "#eab308" // Amarelo
             }
         ];
+
+        // 2. Processar cada status de tempo/páginas separadamente e adicionar aos highlights
+        timeArrays.forEach((item: any) => {
+            if (!item.status) return; // Ignora se não tiver status
+
+            // Valor bruto (minutos ou páginas)
+            const rawValue = item.total_runtime || item.total_playtime || item.total_pages || item.total_duration || 0;
+
+            if (rawValue === 0) return; // Opcional: Ocultar cards zerados para limpar a UI
+
+            let displayValue = "";
+            let unitLabel = "";
+
+            if (type === 'books') {
+                displayValue = rawValue.toLocaleString('pt-BR');
+                unitLabel = "Páginas";
+            } else {
+                // Converter minutos para horas
+                const hours = Math.floor(rawValue / 60);
+                displayValue = `${hours.toLocaleString('pt-BR')}h`;
+                unitLabel = ""; // Já incluído no valor (h)
+            }
+
+            const config = getStatusConfig(item.status);
+
+            // Ajuste fino para label de livros (ex: "Lidos (Páginas)")
+            const finalLabel = unitLabel ? `${config.label} (${unitLabel})` : config.label;
+
+            highlights.push({
+                label: finalLabel,
+                value: displayValue,
+                icon: config.icon,
+                color: config.color
+            });
+        });
 
         const processChart = (data: any[]) => {
             if (!data || data.length === 0) return [];
@@ -179,7 +224,7 @@ export default function ProfileScreen({ navigation }: any) {
         }));
 
         return {
-            highlights,
+            highlights, // Agora contém cards para cada status
             genres: processChart(genresRaw),
             platforms: processChart(platformsRaw),
             topItems: processedTopItems,
@@ -248,13 +293,15 @@ export default function ProfileScreen({ navigation }: any) {
         }
     };
 
-    const renderTabButton = (key: MediaType, label: string, icon: string) => {
+    const renderTabButton = (key: MediaType, label: string, icon: string, isEnabled: boolean) => {
         const isActive = activeTab === key;
         return (
             <TouchableOpacity
+                disabled={!isEnabled}
                 style={[
                     styles.tabButton,
-                    isActive && { backgroundColor: theme.colors.primaryContainer, borderColor: theme.colors.primary }
+                    isActive && { backgroundColor: theme.colors.primaryContainer, borderColor: theme.colors.primary },
+                    !isEnabled && { opacity: 0.4 }
                 ]}
                 onPress={() => setActiveTab(key)}
             >
@@ -273,11 +320,15 @@ export default function ProfileScreen({ navigation }: any) {
         <View style={styles.highlightsGrid}>
             {stats.highlights.map((item, index) => (
                 <Surface key={index} style={[styles.highlightCard, { backgroundColor: theme.colors.surface }]} elevation={1}>
-                    <Text variant="labelSmall" style={{ color: theme.colors.secondary, marginBottom: 4 }}>{item.label}</Text>
-                    <Text variant="headlineSmall" style={{ fontWeight: 'bold', color: theme.colors.onSurface }}>{item.value}</Text>
-                    <View style={{ position: 'absolute', right: 12, top: 12, opacity: 0.1 }}>
-                        <Icon name={item.icon} size={40} color={theme.colors.onSurface} />
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
+                        <Text variant="labelSmall" style={{ color: theme.colors.secondary, flex: 1, marginRight: 8 }} numberOfLines={2}>
+                            {item.label}
+                        </Text>
+                        <Icon name={item.icon} size={20} color={item.color} />
                     </View>
+                    <Text variant="titleLarge" style={{ fontWeight: 'bold', color: theme.colors.onSurface, fontSize: 20 }}>
+                        {item.value}
+                    </Text>
                 </Surface>
             ))}
         </View>
@@ -352,11 +403,11 @@ export default function ProfileScreen({ navigation }: any) {
 
                 <View style={styles.tabsContainer}>
                     <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabsContent}>
-                        {renderTabButton("movies", "Filmes", "movie-open")}
-                        {renderTabButton("tv_shows", "Séries", "television")}
-                        {renderTabButton("games", "Jogos", "controller")}
-                        {renderTabButton("books", "Livros", "book-open-page-variant")}
-                        {renderTabButton("podcasts", "Podcasts", "microphone")}
+                        {renderTabButton("movies", "Filmes", "movie-open", true)}
+                        {renderTabButton("tv_shows", "Séries", "television", true)}
+                        {renderTabButton("games", "Jogos", "controller", false)}
+                        {renderTabButton("books", "Livros", "book-open-page-variant", false)}
+                        {renderTabButton("podcasts", "Podcasts", "microphone", false)}
                     </ScrollView>
                 </View>
 
@@ -451,7 +502,7 @@ const styles = StyleSheet.create({
     reviewsBanner: { padding: 16, borderRadius: 12, marginBottom: 16, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
 
     highlightsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginBottom: 16 },
-    highlightCard: { width: (width - 44) / 2, padding: 16, borderRadius: 12, minHeight: 100, justifyContent: 'center' },
+    highlightCard: { width: (width - 44) / 2, padding: 12, paddingVertical: 16, borderRadius: 12, minHeight: 90, justifyContent: 'center' },
 
     card: { padding: 16, borderRadius: 12, marginBottom: 16 },
 
