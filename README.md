@@ -1,6 +1,5 @@
 # Coisas a serem feitas
 
-* implementar tela de perfil
 * implementar tela de configurações
 * implementar tela de pessoas
 * implementar tela de listas
