@@ -1,13 +1,12 @@
 import React, { useState, useContext, useEffect, useCallback } from "react";
-import { View, ScrollView, StyleSheet, Dimensions, Image, TouchableOpacity, RefreshControl, ActivityIndicator } from "react-native";
+import { View, ScrollView, StyleSheet, Dimensions, Image, TouchableOpacity, RefreshControl, ActivityIndicator, Alert } from "react-native";
 import { Text, Avatar, Button, useTheme, Surface, ProgressBar, Divider, Chip } from "react-native-paper";
 import Icon from "react-native-vector-icons/MaterialCommunityIcons";
 import { AuthContext } from "../context/AuthContext";
 import { api } from "../services/api";
+import UserReviewsModal from "../components/UserReviewsModal";
 
 const { width } = Dimensions.get("window");
-
-// --- Interfaces & Tipos ---
 
 type MediaType = "movies" | "tv_shows" | "games" | "books" | "podcasts";
 
@@ -42,16 +41,15 @@ interface MediaStatsData {
     reviewsCount: number;
 }
 
-// Cores para os gráficos (Cores vibrantes para fundo escuro)
 const CHART_COLORS = [
-    "#3b82f6", // Azul
-    "#ef4444", // Vermelho
-    "#10b981", // Verde
-    "#f59e0b", // Amarelo
-    "#8b5cf6", // Roxo
-    "#ec4899", // Rosa
-    "#06b6d4", // Ciano
-    "#f97316"  // Laranja
+    "#3b82f6",
+    "#ef4444",
+    "#10b981",
+    "#f59e0b",
+    "#8b5cf6",
+    "#ec4899",
+    "#06b6d4",
+    "#f97316"
 ];
 
 export default function ProfileScreen({ navigation }: any) {
@@ -63,23 +61,18 @@ export default function ProfileScreen({ navigation }: any) {
     const [loading, setLoading] = useState(true);
 
     const [statsData, setStatsData] = useState<Record<MediaType, MediaStatsData> | null>(null);
+    const [reviewsModalVisible, setReviewsModalVisible] = useState(false);
 
-    // --- Helpers de Processamento de Dados ---
-
-    // Resolve a URL da imagem que pode vir como string JSON ou Objeto
     const resolveImage = (posterPath: any) => {
         if (!posterPath) return "https://via.placeholder.com/150";
 
         let pathObj = posterPath;
 
-        // Se for string JSON (ex: podcasts, books, games no exemplo fornecido)
         if (typeof posterPath === 'string') {
             try {
-                // Tenta parsear se parecer JSON
                 if (posterPath.startsWith('{') || posterPath.startsWith('[')) {
                     pathObj = JSON.parse(posterPath);
                 } else {
-                    // Se for apenas uma string normal (caminho relativo direto)
                     return `https://image.tmdb.org/t/p/w342${posterPath}`;
                 }
             } catch (e) {
@@ -95,7 +88,6 @@ export default function ProfileScreen({ navigation }: any) {
         return "https://via.placeholder.com/150";
     };
 
-    // Normaliza a nota para exibição
     const resolveRating = (item: any) => {
         if (item.rating_tmdb_average) return Number(item.rating_tmdb_average).toFixed(1);
         if (item.rating_igdb_average) return Number(item.rating_igdb_average).toFixed(1);
@@ -104,14 +96,12 @@ export default function ProfileScreen({ navigation }: any) {
         return "-";
     };
 
-    // Normaliza o ano
     const resolveYear = (item: any) => {
         if (item.release_date) return item.release_date.split("-")[0];
         if (item.first_air_date) return item.first_air_date.split("-")[0];
-        return ""; // Alguns items (livros/jogos) podem não ter data neste endpoint simplificado
+        return "";
     };
 
-    // Processa todos os dados brutos para o formato da UI
     const processMediaStats = (
         type: MediaType,
         generalRaw: any,
@@ -121,12 +111,10 @@ export default function ProfileScreen({ navigation }: any) {
     ): MediaStatsData => {
         const general = generalRaw?.[type] || {};
 
-        // 1. Calcular Totais (Horas ou Páginas)
         let totalValue = 0;
         let timeLabel = "Horas";
         let timeIcon = "clock-outline";
 
-        // Mapeamento dos campos de tempo/contagem baseado no tipo
         const timeArrays = general.runtime || general.playtime || general.page_count || general.duration || [];
 
         if (type === 'books') {
@@ -134,13 +122,11 @@ export default function ProfileScreen({ navigation }: any) {
             timeIcon = "book-open-page-variant-outline";
             totalValue = timeArrays.reduce((acc: number, curr: any) => acc + (curr.total_pages || 0), 0);
         } else {
-            // Filmes, Séries, Jogos, Podcasts (em minutos -> converter para horas)
             const totalMinutes = timeArrays.reduce((acc: number, curr: any) =>
                 acc + (curr.total_runtime || curr.total_playtime || curr.total_duration || 0), 0);
             totalValue = Math.floor(totalMinutes / 60);
         }
 
-        // 2. Montar Cards de Destaque
         const highlights: StatHighlight[] = [
             {
                 label: "Ano Favorito",
@@ -168,13 +154,12 @@ export default function ProfileScreen({ navigation }: any) {
             }
         ];
 
-        // 3. Processar Gráficos (Gêneros e Plataformas)
         const processChart = (data: any[]) => {
             if (!data || data.length === 0) return [];
-            const totalCount = Math.max(data.reduce((acc, curr) => acc + curr.count, 0), 1); // Evitar divisão por zero
+            const totalCount = Math.max(data.reduce((acc, curr) => acc + curr.count, 0), 1);
 
             return data
-                .slice(0, 5) // Top 5
+                .slice(0, 5)
                 .map((item, index) => ({
                     name: item.name,
                     count: item.count,
@@ -183,7 +168,6 @@ export default function ProfileScreen({ navigation }: any) {
                 }));
         };
 
-        // 4. Processar Top Items
         const processedTopItems = (topItemsRaw || []).slice(0, 5).map((item, index) => ({
             id: item.id,
             title: item.title,
@@ -204,7 +188,6 @@ export default function ProfileScreen({ navigation }: any) {
 
     const loadData = async () => {
         try {
-            // Executa todas as requisições em paralelo
             const [
                 generalRes,
                 genresRes,
@@ -229,7 +212,6 @@ export default function ProfileScreen({ navigation }: any) {
             const genres = genresRes.data;
             const platforms = platformsRes.data;
 
-            // Processa cada categoria
             setStatsData({
                 movies: processMediaStats('movies', general, genres.movies, platforms.movies, moviesRes.data),
                 tv_shows: processMediaStats('tv_shows', general, genres.tv_shows, platforms.tv_shows, tvRes.data),
@@ -255,8 +237,13 @@ export default function ProfileScreen({ navigation }: any) {
         loadData();
     }, []);
 
-
-    // --- Render Components ---
+    const handleOpenReviews = () => {
+        if (activeTab === "movies" || activeTab === "tv_shows") {
+            setReviewsModalVisible(true);
+        } else {
+            Alert.alert("Em breve", "Histórico de reviews para esta categoria será implementado em breve.");
+        }
+    };
 
     const renderTabButton = (key: MediaType, label: string, icon: string) => {
         const isActive = activeTab === key;
@@ -321,123 +308,122 @@ export default function ProfileScreen({ navigation }: any) {
     const currentStats = statsData ? statsData[activeTab] : null;
 
     return (
-        <ScrollView
-            style={[styles.container, { backgroundColor: theme.colors.background }]}
-            refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
-            contentContainerStyle={{ paddingBottom: 40 }}
-        >
-            {/* --- Header do Perfil --- */}
-            <View style={styles.headerContainer}>
-                <View style={[styles.cover, { backgroundColor: theme.colors.primaryContainer }]} />
+        <>
+            <ScrollView
+                style={[styles.container, { backgroundColor: theme.colors.background }]}
+                refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+                contentContainerStyle={{ paddingBottom: 40 }}
+            >
+                <View style={styles.headerContainer}>
+                    <View style={[styles.cover, { backgroundColor: theme.colors.primaryContainer }]} />
 
-                <View style={styles.profileHeader}>
-                    <View style={styles.avatarWrapper}>
-                        {user?.avatar ? (
-                            <Avatar.Image size={90} source={{ uri: user.avatar }} style={[styles.avatarBorder, { borderColor: theme.colors.surface }]} />
-                        ) : (
-                            <Avatar.Text size={90} label={user?.name?.charAt(0) || "U"} style={[styles.avatarBorder, { backgroundColor: theme.colors.primary, borderColor: theme.colors.surface }]} />
-                        )}
-                        <View style={[styles.levelBadge, { backgroundColor: theme.colors.surface }]}>
-                            <Icon name="trophy-variant" size={12} color="#eab308" />
-                            <Text style={{ fontSize: 10, fontWeight: 'bold', marginLeft: 2, color: theme.colors.onSurface }}>Lvl 5</Text>
-                        </View>
-                    </View>
-
-                    <View style={styles.userInfo}>
-                        <Text variant="headlineSmall" style={{ fontWeight: 'bold', color: theme.colors.onBackground }}>{user?.name || "Visitante"}</Text>
-                        <Text variant="bodyMedium" style={{ color: theme.colors.secondary }}>@{user?.username || "usuario"}</Text>
-                    </View>
-                </View>
-
-                <View style={styles.gamificationBar}>
-                    <Surface style={[styles.gamificationCard, { backgroundColor: theme.colors.surface }]} elevation={1}>
-                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-                            <Text variant="labelMedium" style={{ fontWeight: 'bold' }}>Cinéfilo Iniciante</Text>
-                            <Text variant="labelSmall" style={{ color: theme.colors.primary }}>450 / 1000 XP</Text>
-                        </View>
-                        <ProgressBar progress={0.45} color={theme.colors.primary} style={{ height: 6, borderRadius: 3 }} />
-                    </Surface>
-                </View>
-            </View>
-
-            {/* --- Tabs de Mídia --- */}
-            <View style={styles.tabsContainer}>
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabsContent}>
-                    {renderTabButton("movies", "Filmes", "movie-open")}
-                    {renderTabButton("tv_shows", "Séries", "television")}
-                    {renderTabButton("games", "Jogos", "controller")}
-                    {renderTabButton("books", "Livros", "book-open-page-variant")}
-                    {renderTabButton("podcasts", "Podcasts", "microphone")}
-                </ScrollView>
-            </View>
-
-            {/* --- Conteúdo das Estatísticas --- */}
-            {loading && !refreshing ? (
-                <View style={{ padding: 40 }}>
-                    <ActivityIndicator size="large" color={theme.colors.primary} />
-                </View>
-            ) : currentStats ? (
-                <View style={styles.contentSection}>
-
-                    {/* Reviews Count Banner */}
-                    <Surface style={[styles.reviewsBanner, { backgroundColor: theme.colors.surface }]} elevation={1}>
-                        <View>
-                            <Text variant="titleMedium" style={{ fontWeight: 'bold' }}>Reviews Escritas</Text>
-                            <Text variant="displaySmall" style={{ fontWeight: 'bold', color: theme.colors.primary }}>{currentStats.reviewsCount}</Text>
-                        </View>
-                        <Button mode="outlined" onPress={() => { }} compact>Ver Todas</Button>
-                    </Surface>
-
-                    {/* Highlights Grid (4 cards) */}
-                    {renderHighlights(currentStats)}
-
-                    {/* Charts */}
-                    {renderChart("Gêneros Favoritos", currentStats.genres)}
-                    {renderChart("Plataformas Mais Usadas", currentStats.platforms)}
-
-                    {/* Top Items List */}
-                    {currentStats.topItems.length > 0 && (
-                        <Surface style={[styles.card, { backgroundColor: theme.colors.surface }]} elevation={1}>
-                            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-                                <Text variant="titleMedium" style={{ fontWeight: 'bold', color: theme.colors.onSurface }}>
-                                    {activeTab === 'movies' ? 'Filmes' : activeTab === 'tv_shows' ? 'Séries' : activeTab === 'games' ? 'Jogos' : activeTab === 'books' ? 'Livros' : 'Podcasts'} mais bem avaliados
-                                </Text>
-                                <Icon name="trophy" size={20} color="#eab308" />
+                    <View style={styles.profileHeader}>
+                        <View style={styles.avatarWrapper}>
+                            {user?.avatar ? (
+                                <Avatar.Image size={90} source={{ uri: user.avatar }} style={[styles.avatarBorder, { borderColor: theme.colors.surface }]} />
+                            ) : (
+                                <Avatar.Text size={90} label={user?.name?.charAt(0) || "U"} style={[styles.avatarBorder, { backgroundColor: theme.colors.primary, borderColor: theme.colors.surface }]} />
+                            )}
+                            <View style={[styles.levelBadge, { backgroundColor: theme.colors.surface }]}>
+                                <Icon name="trophy-variant" size={12} color="#eab308" />
+                                <Text style={{ fontSize: 10, fontWeight: 'bold', marginLeft: 2, color: theme.colors.onSurface }}>Lvl 5</Text>
                             </View>
+                        </View>
 
-                            {currentStats.topItems.map((item, index) => (
-                                <View key={item.id}>
-                                    {index > 0 && <Divider style={{ marginVertical: 12 }} />}
-                                    <TouchableOpacity style={styles.topItemRow} activeOpacity={0.7}>
-                                        <View style={[styles.rankBadge, { backgroundColor: index === 0 ? '#eab308' : index === 1 ? '#94a3b8' : index === 2 ? '#b45309' : theme.colors.primaryContainer }]}>
-                                            <Text style={{ fontWeight: 'bold', color: index < 3 ? 'white' : theme.colors.onPrimaryContainer, fontSize: 12 }}>{item.rank}</Text>
-                                        </View>
+                        <View style={styles.userInfo}>
+                            <Text variant="headlineSmall" style={{ fontWeight: 'bold', color: theme.colors.onBackground }}>{user?.name || "Visitante"}</Text>
+                            <Text variant="bodyMedium" style={{ color: theme.colors.secondary }}>@{user?.username || "usuario"}</Text>
+                        </View>
+                    </View>
 
-                                        <Image source={{ uri: item.image }} style={styles.topItemImage} resizeMode="cover" />
-
-                                        <View style={{ flex: 1, marginLeft: 12 }}>
-                                            <Text variant="bodyMedium" style={{ fontWeight: 'bold', color: theme.colors.onSurface }} numberOfLines={1}>{item.title}</Text>
-                                            <Text variant="bodySmall" style={{ color: theme.colors.secondary }}>{item.year}</Text>
-                                        </View>
-
-                                        <View style={styles.ratingBox}>
-                                            <Icon name="star" size={14} color="#eab308" />
-                                            <Text style={{ fontSize: 12, fontWeight: 'bold', color: theme.colors.onSurface, marginLeft: 4 }}>{item.rating}</Text>
-                                        </View>
-                                    </TouchableOpacity>
-                                </View>
-                            ))}
+                    <View style={styles.gamificationBar}>
+                        <Surface style={[styles.gamificationCard, { backgroundColor: theme.colors.surface }]} elevation={1}>
+                            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                                <Text variant="labelMedium" style={{ fontWeight: 'bold' }}>Cinéfilo Iniciante</Text>
+                                <Text variant="labelSmall" style={{ color: theme.colors.primary }}>450 / 1000 XP</Text>
+                            </View>
+                            <ProgressBar progress={0.45} color={theme.colors.primary} style={{ height: 6, borderRadius: 3 }} />
                         </Surface>
-                    )}
+                    </View>
                 </View>
-            ) : (
-                <View style={styles.emptyState}>
-                    <Icon name="database-off" size={48} color={theme.colors.outline} />
-                    <Text style={{ marginTop: 12, color: theme.colors.secondary }}>Nenhuma estatística encontrada.</Text>
-                </View>
-            )}
 
-        </ScrollView>
+                <View style={styles.tabsContainer}>
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabsContent}>
+                        {renderTabButton("movies", "Filmes", "movie-open")}
+                        {renderTabButton("tv_shows", "Séries", "television")}
+                        {renderTabButton("games", "Jogos", "controller")}
+                        {renderTabButton("books", "Livros", "book-open-page-variant")}
+                        {renderTabButton("podcasts", "Podcasts", "microphone")}
+                    </ScrollView>
+                </View>
+
+                {loading && !refreshing ? (
+                    <View style={{ padding: 40 }}>
+                        <ActivityIndicator size="large" color={theme.colors.primary} />
+                    </View>
+                ) : currentStats ? (
+                    <View style={styles.contentSection}>
+
+                        <Surface style={[styles.reviewsBanner, { backgroundColor: theme.colors.surface }]} elevation={1}>
+                            <View>
+                                <Text variant="titleMedium" style={{ fontWeight: 'bold' }}>Reviews Escritas</Text>
+                                <Text variant="displaySmall" style={{ fontWeight: 'bold', color: theme.colors.primary }}>{currentStats.reviewsCount}</Text>
+                            </View>
+                            <Button mode="outlined" onPress={handleOpenReviews} compact>Ver Todas</Button>
+                        </Surface>
+
+                        {renderHighlights(currentStats)}
+                        {renderChart("Gêneros Favoritos", currentStats.genres)}
+                        {renderChart("Plataformas Mais Usadas", currentStats.platforms)}
+
+                        {currentStats.topItems.length > 0 && (
+                            <Surface style={[styles.card, { backgroundColor: theme.colors.surface }]} elevation={1}>
+                                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                                    <Text variant="titleMedium" style={{ fontWeight: 'bold', color: theme.colors.onSurface }}>
+                                        {activeTab === 'movies' ? 'Filmes' : activeTab === 'tv_shows' ? 'Séries' : activeTab === 'games' ? 'Jogos' : activeTab === 'books' ? 'Livros' : 'Podcasts'} mais bem avaliados
+                                    </Text>
+                                    <Icon name="trophy" size={20} color="#eab308" />
+                                </View>
+
+                                {currentStats.topItems.map((item, index) => (
+                                    <View key={item.id}>
+                                        {index > 0 && <Divider style={{ marginVertical: 12 }} />}
+                                        <TouchableOpacity style={styles.topItemRow} activeOpacity={0.7}>
+                                            <View style={[styles.rankBadge, { backgroundColor: index === 0 ? '#eab308' : index === 1 ? '#94a3b8' : index === 2 ? '#b45309' : theme.colors.primaryContainer }]}>
+                                                <Text style={{ fontWeight: 'bold', color: index < 3 ? 'white' : theme.colors.onPrimaryContainer, fontSize: 12 }}>{item.rank}</Text>
+                                            </View>
+
+                                            <Image source={{ uri: item.image }} style={styles.topItemImage} resizeMode="cover" />
+
+                                            <View style={{ flex: 1, marginLeft: 12 }}>
+                                                <Text variant="bodyMedium" style={{ fontWeight: 'bold', color: theme.colors.onSurface }} numberOfLines={1}>{item.title}</Text>
+                                                <Text variant="bodySmall" style={{ color: theme.colors.secondary }}>{item.year}</Text>
+                                            </View>
+
+                                            <View style={styles.ratingBox}>
+                                                <Icon name="star" size={14} color="#eab308" />
+                                                <Text style={{ fontSize: 12, fontWeight: 'bold', color: theme.colors.onSurface, marginLeft: 4 }}>{item.rating}</Text>
+                                            </View>
+                                        </TouchableOpacity>
+                                    </View>
+                                ))}
+                            </Surface>
+                        )}
+                    </View>
+                ) : (
+                    <View style={styles.emptyState}>
+                        <Icon name="database-off" size={48} color={theme.colors.outline} />
+                        <Text style={{ marginTop: 12, color: theme.colors.secondary }}>Nenhuma estatística encontrada.</Text>
+                    </View>
+                )}
+            </ScrollView>
+
+            <UserReviewsModal
+                visible={reviewsModalVisible}
+                onDismiss={() => setReviewsModalVisible(false)}
+                mediaType={activeTab}
+            />
+        </>
     );
 }
 
