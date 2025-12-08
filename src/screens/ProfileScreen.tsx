@@ -378,10 +378,10 @@ export default function ProfileScreen({ navigation }: any) {
                             ) : (
                                 <Avatar.Text size={90} label={user?.name?.charAt(0) || "U"} style={[styles.avatarBorder, { backgroundColor: theme.colors.primary, borderColor: theme.colors.surface }]} />
                             )}
-                            <View style={[styles.levelBadge, { backgroundColor: theme.colors.surface }]}>
+                            {/* <View style={[styles.levelBadge, { backgroundColor: theme.colors.surface }]}>
                                 <Icon name="trophy-variant" size={12} color="#eab308" />
                                 <Text style={{ fontSize: 10, fontWeight: 'bold', marginLeft: 2, color: theme.colors.onSurface }}>Lvl 5</Text>
-                            </View>
+                            </View> */}
                         </View>
 
                         <View style={styles.userInfo}>
@@ -390,7 +390,7 @@ export default function ProfileScreen({ navigation }: any) {
                         </View>
                     </View>
 
-                    <View style={styles.gamificationBar}>
+                    {/* <View style={styles.gamificationBar}>
                         <Surface style={[styles.gamificationCard, { backgroundColor: theme.colors.surface }]} elevation={1}>
                             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
                                 <Text variant="labelMedium" style={{ fontWeight: 'bold' }}>Cinéfilo Iniciante</Text>
@@ -398,7 +398,7 @@ export default function ProfileScreen({ navigation }: any) {
                             </View>
                             <ProgressBar progress={0.45} color={theme.colors.primary} style={{ height: 6, borderRadius: 3 }} />
                         </Surface>
-                    </View>
+                    </View> */}
                 </View>
 
                 <View style={styles.tabsContainer}>
