@@ -1,6 +1,6 @@
 import React, { useState, useContext, useEffect, useCallback } from "react";
 import { View, ScrollView, StyleSheet, Dimensions, Image, TouchableOpacity, RefreshControl, ActivityIndicator, Alert } from "react-native";
-import { Text, Avatar, Button, useTheme, Surface, ProgressBar, Divider, Chip } from "react-native-paper";
+import { Text, Avatar, Button, useTheme, Surface, ProgressBar, Divider } from "react-native-paper";
 import Icon from "react-native-vector-icons/MaterialCommunityIcons";
 import { AuthContext } from "../context/AuthContext";
 import { api } from "../services/api";
@@ -54,7 +54,7 @@ const CHART_COLORS = [
 
 export default function ProfileScreen({ navigation }: any) {
     const theme = useTheme();
-    const { user, signOut } = useContext(AuthContext);
+    const { user } = useContext(AuthContext);
 
     const [activeTab, setActiveTab] = useState<MediaType>("movies");
     const [refreshing, setRefreshing] = useState(false);
@@ -107,7 +107,8 @@ export default function ProfileScreen({ navigation }: any) {
         generalRaw: any,
         genresRaw: any[],
         platformsRaw: any[],
-        topItemsRaw: any[]
+        topItemsRaw: any[],
+        customReviewsCount?: number
     ): MediaStatsData => {
         const general = generalRaw?.[type] || {};
 
@@ -182,7 +183,7 @@ export default function ProfileScreen({ navigation }: any) {
             genres: processChart(genresRaw),
             platforms: processChart(platformsRaw),
             topItems: processedTopItems,
-            reviewsCount: general.reviews_count || 0
+            reviewsCount: customReviewsCount !== undefined ? customReviewsCount : (general.reviews_count || 0)
         };
     };
 
@@ -196,7 +197,8 @@ export default function ProfileScreen({ navigation }: any) {
                 tvRes,
                 gamesRes,
                 booksRes,
-                podcastsRes
+                podcastsRes,
+                episodeStatsRes
             ] = await Promise.all([
                 api.get('/stats/general'),
                 api.get('/stats/genres'),
@@ -206,6 +208,7 @@ export default function ProfileScreen({ navigation }: any) {
                 api.get('/stats/top-games'),
                 api.get('/stats/top-books'),
                 api.get('/stats/top-podcasts'),
+                api.get('/users/episode/reviews/stats').catch(() => ({ data: { total_reviews: 0 } }))
             ]);
 
             const general = generalRes.data;
@@ -214,7 +217,7 @@ export default function ProfileScreen({ navigation }: any) {
 
             setStatsData({
                 movies: processMediaStats('movies', general, genres.movies, platforms.movies, moviesRes.data),
-                tv_shows: processMediaStats('tv_shows', general, genres.tv_shows, platforms.tv_shows, tvRes.data),
+                tv_shows: processMediaStats('tv_shows', general, genres.tv_shows, platforms.tv_shows, tvRes.data, episodeStatsRes.data?.total_reviews),
                 games: processMediaStats('games', general, genres.games, platforms.games, gamesRes.data),
                 books: processMediaStats('books', general, genres.books, platforms.books, booksRes.data),
                 podcasts: processMediaStats('podcasts', general, genres.podcasts, platforms.podcasts, podcastsRes.data),
