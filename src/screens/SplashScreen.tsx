@@ -20,7 +20,7 @@ const SplashScreen = ({ navigation }: SplashScreenProps): ReactNode => {
         onAnimationFinish={() => {
           navigation.reset({
             index: 0,
-            routes: [{ name: 'Drawer' }]
+            routes: [{ name: 'Home' }]
           })
         }}
       />
