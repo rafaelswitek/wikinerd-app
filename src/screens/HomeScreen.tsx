@@ -166,10 +166,10 @@ function CustomDrawerContent(props: DrawerContentComponentProps) {
           <Avatar.Text size={40} label={user?.name?.charAt(0) || "U"} style={{ backgroundColor: theme.colors.primary }} />
         )}
 
-        <View style={{ marginLeft: 12, flex: 1 }}>
+        <TouchableOpacity style={{ marginLeft: 12, flex: 1 }} onPress={() => navigation.navigate("Profile")}>
           <Text style={{ color: theme.colors.onSurface, fontWeight: 'bold', fontSize: 14 }}>{user?.name || "Visitante"}</Text>
           <Text style={{ color: styles.textSecondary.color, fontSize: 12 }}>@{user?.username || "usuario"}</Text>
-        </View>
+        </TouchableOpacity>
       </View>
 
       <Divider style={{ backgroundColor: theme.colors.outlineVariant }} />
@@ -203,8 +203,7 @@ function CustomDrawerContent(props: DrawerContentComponentProps) {
 
         <DrawerSectionTitle title="Pessoal" />
         <CustomDrawerItem label="Perfil" icon="account-outline" onPress={() => navigation.navigate("Profile")} />
-        <CustomDrawerItem label="Configurações" icon="cog-outline" onPress={() => console.log("Config")} />
-
+        <CustomDrawerItem label="Configurações" icon="cog-outline" onPress={() => navigation.navigate("Settings")} />
         <View style={{ marginTop: 20, paddingHorizontal: 16, paddingBottom: 20 + insets.bottom }}>
           <TouchableOpacity
             style={{

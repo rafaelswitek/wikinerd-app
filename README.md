@@ -1,6 +1,5 @@
 # Coisas a serem feitas
 
-* implementar tela de configurações
 * implementar tela de pessoas
 * implementar tela de listas
 * implementar as telas de series

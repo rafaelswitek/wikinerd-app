@@ -14,6 +14,7 @@ import LoginScreen from "./src/screens/auth/LoginScreen";
 import RegisterScreen from "./src/screens/auth/RegisterScreen";
 import ForgotPasswordScreen from "./src/screens/auth/ForgotPasswordScreen";
 import ResetPasswordScreen from "./src/screens/auth/ResetPasswordScreen";
+import SettingsScreen from "./src/screens/SettingsScreen";
 
 const { LightTheme, DarkTheme } = adaptNavigationTheme({
   reactNavigationLight: NavDefaultTheme,
@@ -90,6 +91,16 @@ function AppStack({ theme }: { theme: any }) {
         options={{
           headerShown: true,
           title: "Meu Perfil",
+          headerStyle: { backgroundColor: theme.colors.card },
+          headerTintColor: theme.colors.text
+        }}
+      />
+      <Stack.Screen
+        name="Settings"
+        component={SettingsScreen}
+        options={{
+          headerShown: true,
+          title: "Configurações",
           headerStyle: { backgroundColor: theme.colors.card },
           headerTintColor: theme.colors.text
         }}
