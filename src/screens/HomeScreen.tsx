@@ -12,6 +12,7 @@ import MediaTabs from "../components/MediaTabs";
 import Header from "../components/Header";
 import { AuthContext } from "../context/AuthContext";
 import MoviesScreen from "./MoviesScreen";
+import PeopleScreen from "./PeopleScreen";
 
 const Tab = createBottomTabNavigator();
 const Drawer = createDrawerNavigator();
@@ -193,7 +194,7 @@ function CustomDrawerContent(props: DrawerContentComponentProps) {
         <CustomDrawerItem label="Livros" icon="book-open-page-variant" isComingSoon />
         <CustomDrawerItem label="YouTube" icon="youtube" isComingSoon />
         <CustomDrawerItem label="Podcasts" icon="podcast" isComingSoon />
-        <CustomDrawerItem label="Pessoas" icon="account-group-outline" onPress={() => { }} />
+        <CustomDrawerItem label="Pessoas" icon="account-group-outline" onPress={() => navigation.navigate("PeopleList")} />
 
         <DrawerSectionTitle title="Social" />
         <CustomDrawerItem label="Comunidade" icon="account-voice" isComingSoon />
@@ -244,6 +245,12 @@ export default function HomeScreen() {
       <Drawer.Screen
         name="MoviesCatalog"
         component={MoviesScreen}
+      />
+
+      <Drawer.Screen
+        name="PeopleList"
+        component={PeopleScreen}
+        options={{ headerShown: false }}
       />
     </Drawer.Navigator>
   );

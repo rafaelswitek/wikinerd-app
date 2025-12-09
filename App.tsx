@@ -15,6 +15,7 @@ import RegisterScreen from "./src/screens/auth/RegisterScreen";
 import ForgotPasswordScreen from "./src/screens/auth/ForgotPasswordScreen";
 import ResetPasswordScreen from "./src/screens/auth/ResetPasswordScreen";
 import SettingsScreen from "./src/screens/SettingsScreen";
+import PersonDetailsScreen from "./src/screens/PersonDetailsScreen";
 
 const { LightTheme, DarkTheme } = adaptNavigationTheme({
   reactNavigationLight: NavDefaultTheme,
@@ -114,6 +115,11 @@ function AppStack({ theme }: { theme: any }) {
           headerTransparent: true,
           headerTintColor: '#fff',
         }}
+      />
+      <Stack.Screen
+        name="PersonDetails"
+        component={PersonDetailsScreen}
+        options={{ title: "Detalhes", headerTransparent: true, headerTintColor: '#fff' }} // Ajuste conforme preferência visual
       />
     </Stack.Navigator>
   );
