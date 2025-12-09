@@ -1,8 +1,6 @@
-// src/screens/PeopleScreen.tsx
-
 import React, { useState, useEffect } from "react";
 import { View, StyleSheet, FlatList, Image, TouchableOpacity, ActivityIndicator } from "react-native";
-import { Searchbar, Text, Button, useTheme, Menu, IconButton, Divider } from "react-native-paper";
+import { Searchbar, Text, Button, useTheme, Menu } from "react-native-paper";
 import { useNavigation, DrawerActions } from "@react-navigation/native";
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -10,12 +8,10 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { api } from "../services/api";
 import { Person } from "../types/Person";
 
-// Opções de ordenação conforme a imagem
 const sortOptions = [
-  { label: "Padrão", value: undefined },
-  { label: "Nome", value: "name" },
-  { label: "Nascimento", value: "birthday" },
-  { label: "Falecimento", value: "deathday" },
+  { label: "Nome", id: "name" },
+  { label: "Nascimento", id: "birthday" },
+  { label: "Falecimento", id: "deathday" },
 ];
 
 export default function PeopleScreen() {
@@ -26,19 +22,17 @@ export default function PeopleScreen() {
   const [people, setPeople] = useState<Person[]>([]);
   const [loading, setLoading] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
-  
-  // Estados de Paginação e Busca
+
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [debouncedTerm, setDebouncedTerm] = useState("");
 
   // Estados de Ordenação
-  const [orderBy, setOrderBy] = useState<string | undefined>(undefined);
-  const [direction, setDirection] = useState<'asc' | 'desc'>('asc');
-  const [menuVisible, setMenuVisible] = useState(false);
+  const [orderBy, setOrderBy] = useState("name");
+  const [direction, setDirection] = useState<"asc" | "desc">("asc");
+  const [sortMenuVisible, setSortMenuVisible] = useState(false);
 
-  // Debounce da busca
   useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedTerm(searchTerm);
@@ -47,15 +41,13 @@ export default function PeopleScreen() {
     return () => clearTimeout(timer);
   }, [searchTerm]);
 
-  // Efeito para recarregar quando mudar filtros ou página
   useEffect(() => {
     fetchPeople(page === 1 ? 1 : page);
-  }, [page, debouncedTerm, orderBy, direction]);
+  }, [debouncedTerm, orderBy, direction, page]);
 
-  // Resetar página ao mudar ordenação
   useEffect(() => {
     setPage(1);
-  }, [orderBy, direction]);
+  }, [debouncedTerm, orderBy, direction]);
 
   const fetchPeople = async (pageNum: number) => {
     if (pageNum === 1) setLoading(true);
@@ -94,35 +86,35 @@ export default function PeopleScreen() {
     }
   };
 
-  // Helpers de Ordenação
-  const toggleDirection = () => {
-    setDirection(prev => prev === 'asc' ? 'desc' : 'asc');
+  const handleSortChange = (value: string) => {
+    if (value === orderBy) {
+      setDirection(prev => prev === "asc" ? "desc" : "asc");
+    } else {
+      setOrderBy(value);
+      setDirection("desc");
+    }
+    setSortMenuVisible(false);
   };
 
-  const handleSortSelect = (value: string | undefined) => {
-    setOrderBy(value);
-    setMenuVisible(false);
-  };
-
-  const getCurrentSortLabel = () => {
-    const option = sortOptions.find(o => o.value === orderBy);
-    return option ? option.label : "Padrão";
+  const getSortLabel = () => {
+    const opt = sortOptions.find(o => o.id === orderBy);
+    return opt ? `${opt.label} (${direction === 'asc' ? '↑' : '↓'})` : 'Ordenar';
   };
 
   const renderPersonCard = ({ item }: { item: Person }) => {
-    const imageUrl = item.profile_path?.tmdb 
-      ? `https://image.tmdb.org/t/p/w185${item.profile_path.tmdb}` 
+    const imageUrl = item.profile_path?.tmdb
+      ? `https://image.tmdb.org/t/p/w185${item.profile_path.tmdb}`
       : "https://via.placeholder.com/150x225?text=No+Image";
 
     return (
-      <TouchableOpacity 
+      <TouchableOpacity
         style={[styles.cardContainer, { backgroundColor: theme.colors.surface }]}
         onPress={() => navigation.navigate("PersonDetails", { slug: item.slug })}
         activeOpacity={0.7}
       >
-        <Image 
-          source={{ uri: imageUrl }} 
-          style={styles.cardImage} 
+        <Image
+          source={{ uri: imageUrl }}
+          style={styles.cardImage}
           resizeMode="cover"
         />
         <View style={styles.cardContent}>
@@ -144,7 +136,7 @@ export default function PeopleScreen() {
             <Icon name="account-group" size={24} color={theme.colors.primary} style={{ marginRight: 8 }} />
             <Text variant="titleLarge" style={{ fontWeight: 'bold', color: theme.colors.onSurface }}>Pessoas</Text>
           </View>
-          <View style={{ width: 60 }} /> 
+          <View style={{ width: 60 }} />
         </View>
 
         <Searchbar
@@ -155,43 +147,33 @@ export default function PeopleScreen() {
           inputStyle={{ minHeight: 0 }}
         />
 
-        {/* BARRA DE ORDENAÇÃO */}
-        <View style={styles.sortContainer}>
-          <View style={{ flex: 1, marginRight: 8 }}>
+        <View style={styles.controlsRow}>
+          <View style={{ flex: 1 }}>
             <Menu
-              visible={menuVisible}
-              onDismiss={() => setMenuVisible(false)}
+              visible={sortMenuVisible}
+              onDismiss={() => setSortMenuVisible(false)}
               anchor={
-                <Button 
-                  mode="outlined" 
-                  onPress={() => setMenuVisible(true)} 
-                  contentStyle={{ justifyContent: 'space-between' }}
-                  style={{ borderColor: theme.colors.outline }}
-                  textColor={theme.colors.onSurface}
+                <Button
                   icon="sort"
+                  mode="outlined"
+                  onPress={() => setSortMenuVisible(true)}
+                  style={styles.controlButton}
+                  textColor={theme.colors.onSurface}
                 >
-                  Ordenado por: {getCurrentSortLabel()}
+                  {getSortLabel()}
                 </Button>
               }
             >
-              {sortOptions.map((opt) => (
-                <Menu.Item 
-                  key={opt.label} 
-                  onPress={() => handleSortSelect(opt.value)} 
+              {sortOptions.map(opt => (
+                <Menu.Item
+                  key={opt.id}
+                  onPress={() => handleSortChange(opt.id)}
                   title={opt.label}
-                  leadingIcon={orderBy === opt.value ? "check" : undefined}
+                  leadingIcon={orderBy === opt.id ? (direction === 'asc' ? 'arrow-up' : 'arrow-down') : undefined}
                 />
               ))}
             </Menu>
           </View>
-
-          <IconButton
-            icon={direction === 'asc' ? "sort-ascending" : "sort-descending"}
-            mode="outlined"
-            iconColor={theme.colors.onSurface}
-            onPress={toggleDirection}
-            style={{ borderColor: theme.colors.outline, margin: 0 }}
-          />
         </View>
 
       </View>
@@ -227,7 +209,10 @@ const styles = StyleSheet.create({
   headerTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 },
   headerTitleContainer: { flexDirection: 'row', alignItems: 'center' },
   searchBar: { height: 48, backgroundColor: 'rgba(255,255,255,0.1)', marginBottom: 12 },
-  sortContainer: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+
+  controlsRow: { flexDirection: 'row' },
+  controlButton: { width: '100%', borderRadius: 4, borderColor: 'rgba(255,255,255,0.2)' },
+
   listContent: { padding: 8 },
   cardContainer: { flex: 1, margin: 4, borderRadius: 8, overflow: 'hidden', elevation: 2, maxWidth: '33.33%' },
   cardImage: { width: '100%', height: 160, backgroundColor: '#ccc' },
