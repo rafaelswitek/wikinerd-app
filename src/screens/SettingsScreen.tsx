@@ -1,16 +1,16 @@
 import React, { useState, useContext, useEffect, useCallback } from "react";
-import { View, ScrollView, StyleSheet, Alert, TouchableOpacity } from "react-native";
+import { View, ScrollView, StyleSheet, Alert, TouchableOpacity, Image } from "react-native";
 import {
     Text, TextInput, Button, Switch, List, Avatar, useTheme,
     Divider, Portal, Dialog, SegmentedButtons, ActivityIndicator,
     Menu, IconButton
 } from "react-native-paper";
 import { useNavigation } from "@react-navigation/native";
+import * as ImagePicker from 'expo-image-picker'; // Importar ImagePicker
 import { AuthContext } from "../context/AuthContext";
 import { ThemeContext } from "../context/ThemeContext";
 import { api } from "../services/api";
 
-// Definição dos tipos baseados no JSON fornecido
 interface UserPreferences {
     notify_lists: boolean;
     notify_reviews: boolean;
@@ -33,19 +33,17 @@ export default function SettingsScreen() {
     const { user, signOut, updateUserProfile } = useContext(AuthContext);
     const { isDark, toggleTheme } = useContext(ThemeContext);
 
-    // Loading States
     const [loading, setLoading] = useState(false);
     const [savingProfile, setSavingProfile] = useState(false);
     const [savingPrefs, setSavingPrefs] = useState(false);
     const [savingSecurity, setSavingSecurity] = useState(false);
 
-    // Profile Form
     const [name, setName] = useState(user?.name || "");
     const [username, setUsername] = useState(user?.username || "");
     const [bio, setBio] = useState(user?.bio || "");
     const [website, setWebsite] = useState(user?.website || "");
+    const [pickedAvatar, setPickedAvatar] = useState<ImagePicker.ImagePickerAsset | null>(null);
 
-    // Preferences Form (valores padrão iniciais)
     const [prefs, setPrefs] = useState<UserPreferences>({
         notify_lists: true,
         notify_reviews: true,
@@ -62,34 +60,26 @@ export default function SettingsScreen() {
         allow_third_party_sharing: false,
     });
 
-    // Security Form
     const [currentPassword, setCurrentPassword] = useState("");
     const [newPassword, setNewPassword] = useState("");
     const [confirmPassword, setConfirmPassword] = useState("");
     const [secureTextEntry, setSecureTextEntry] = useState({ current: true, new: true, confirm: true });
 
-    // Dialogs Control
     const [dialogVisible, setDialogVisible] = useState<'delete' | 'deactivate' | null>(null);
     const [languageMenuVisible, setLanguageMenuVisible] = useState<'interface' | 'content' | null>(null);
 
-    // --- Carregamento de Dados ---
     const loadData = useCallback(async () => {
         setLoading(true);
         try {
-            // Busca perfil atualizado e preferências em paralelo
             const [prefsResponse] = await Promise.all([
-                api.get("/users/preferences").catch(() => ({ data: null })), // Fallback se falhar
-                updateUserProfile() // Atualiza dados do AuthContext
+                api.get("/users/preferences").catch(() => ({ data: null })),
+                updateUserProfile()
             ]);
 
             if (prefsResponse?.data) {
                 setPrefs(prefsResponse.data);
-
-                // Sincronizar tema local se necessário (opcional)
-                // if (prefsResponse.data.theme !== 'system') { ... }
             }
 
-            // Atualiza estados locais do perfil com dados do contexto atualizados
             if (user) {
                 setName(user.name);
                 setUsername(user.username);
@@ -109,22 +99,59 @@ export default function SettingsScreen() {
         loadData();
     }, []);
 
-    // --- Handlers de Salvar ---
+    const handleAvatarPress = async () => {
+        try {
+            const result = await ImagePicker.launchImageLibraryAsync({
+                mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                allowsEditing: true,
+                aspect: [1, 1],
+                quality: 0.8,
+            });
+
+            if (!result.canceled) {
+                setPickedAvatar(result.assets[0]);
+            }
+        } catch (error) {
+            Alert.alert("Erro", "Não foi possível abrir a galeria.");
+        }
+    };
 
     const handleSaveProfile = async () => {
         setSavingProfile(true);
         try {
-            // Endpoint inferido para atualização de perfil
-            await api.put("/users", {
-                name,
-                username,
-                bio,
-                website
+            const formData = new FormData();
+
+            // Adiciona campos de texto
+            formData.append('name', name);
+            formData.append('username', username);
+            formData.append('bio', bio);
+            formData.append('website', website);
+
+            // Adiciona avatar se houver
+            if (pickedAvatar) {
+                const filename = pickedAvatar.uri.split('/').pop();
+                const match = /\.(\w+)$/.exec(filename || '');
+                const type = match ? `image/${match[1]}` : `image`;
+
+                // @ts-ignore: FormData no React Native aceita objeto com uri, name e type
+                formData.append('avatar', {
+                    uri: pickedAvatar.uri,
+                    name: filename || 'avatar.jpg',
+                    type: type,
+                });
+            }
+
+            await api.post("/users/profile", formData, {
+                headers: {
+                    'Content-Type': 'multipart/form-data',
+                },
             });
 
-            await updateUserProfile(); // Atualiza contexto
+            await updateUserProfile();
+            setPickedAvatar(null); // Limpa seleção local após sucesso
             Alert.alert("Sucesso", "Perfil atualizado com sucesso.");
         } catch (error: any) {
+            console.error(error);
             const msg = error.response?.data?.message || "Não foi possível atualizar o perfil.";
             Alert.alert("Erro", msg);
         } finally {
@@ -137,7 +164,6 @@ export default function SettingsScreen() {
         try {
             const payload = { ...prefs };
 
-            // Sincroniza tema visual se o usuário mudou explicitamente
             if (prefs.theme === 'dark' && !isDark) toggleTheme();
             if (prefs.theme === 'light' && isDark) toggleTheme();
 
@@ -179,12 +205,6 @@ export default function SettingsScreen() {
         }
     };
 
-    const handleAvatarPress = () => {
-        Alert.alert("Em breve", "A funcionalidade de upload de imagem estará disponível em breve.");
-    };
-
-    // --- Render Helpers ---
-
     const renderSwitchRow = (label: string, value: boolean, onValueChange: (val: boolean) => void, description?: string) => (
         <View style={styles.switchContainer}>
             <View style={{ flex: 1, paddingRight: 8 }}>
@@ -194,6 +214,17 @@ export default function SettingsScreen() {
             <Switch value={value} onValueChange={onValueChange} color={theme.colors.primary} />
         </View>
     );
+
+    // Helper para exibir avatar (Local > Remoto > Inicial)
+    const renderAvatar = () => {
+        if (pickedAvatar) {
+            return <Avatar.Image size={100} source={{ uri: pickedAvatar.uri }} />;
+        }
+        if (user?.avatar) {
+            return <Avatar.Image size={100} source={{ uri: user.avatar }} />;
+        }
+        return <Avatar.Text size={100} label={user?.name?.charAt(0) || "U"} />;
+    };
 
     if (loading) {
         return (
@@ -205,25 +236,13 @@ export default function SettingsScreen() {
 
     return (
         <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
-            {/* Header Fixo */}
-            <View style={[styles.header, { backgroundColor: theme.colors.surface }]}>
-                <IconButton icon="arrow-left" onPress={() => navigation.goBack()} />
-                <Text variant="titleLarge" style={{ fontWeight: 'bold' }}>Configurações</Text>
-            </View>
-
             <ScrollView contentContainerStyle={styles.scrollContent}>
-
                 <List.AccordionGroup>
-                    {/* SEÇÃO PERFIL */}
                     <List.Accordion title="Perfil" id="profile" left={props => <List.Icon {...props} icon="account" />}>
                         <View style={styles.accordionBody}>
                             <View style={{ alignItems: 'center', marginBottom: 20 }}>
                                 <TouchableOpacity onPress={handleAvatarPress}>
-                                    {user?.avatar ? (
-                                        <Avatar.Image size={100} source={{ uri: user.avatar }} />
-                                    ) : (
-                                        <Avatar.Text size={100} label={user?.name?.charAt(0) || "U"} />
-                                    )}
+                                    {renderAvatar()}
                                     <View style={[styles.avatarEditBadge, { backgroundColor: theme.colors.primary }]}>
                                         <List.Icon icon="camera" color="white" style={{ margin: 0, padding: 0, width: 16, height: 16 }} />
                                     </View>
@@ -243,7 +262,6 @@ export default function SettingsScreen() {
                     </List.Accordion>
                     <Divider />
 
-                    {/* SEÇÃO NOTIFICAÇÕES */}
                     <List.Accordion title="Notificações" id="notifications" left={props => <List.Icon {...props} icon="bell" />}>
                         <View style={styles.accordionBody}>
                             {renderSwitchRow("Listas", prefs.notify_lists, v => setPrefs({ ...prefs, notify_lists: v }), "Interações em suas listas")}
@@ -261,7 +279,6 @@ export default function SettingsScreen() {
                     </List.Accordion>
                     <Divider />
 
-                    {/* SEÇÃO APARÊNCIA */}
                     <List.Accordion title="Aparência" id="appearance" left={props => <List.Icon {...props} icon="theme-light-dark" />}>
                         <View style={styles.accordionBody}>
                             <Text style={styles.label}>Tema</Text>
@@ -275,11 +292,13 @@ export default function SettingsScreen() {
                                 ]}
                                 style={{ marginBottom: 16 }}
                             />
+                            <Button mode="contained" onPress={handleSavePreferences} loading={savingPrefs} style={styles.saveButton}>
+                                Salvar Aparência
+                            </Button>
                         </View>
                     </List.Accordion>
                     <Divider />
 
-                    {/* SEÇÃO IDIOMA */}
                     <List.Accordion title="Idioma" id="language" left={props => <List.Icon {...props} icon="web" />}>
                         <View style={styles.accordionBody}>
                             <Text style={styles.label}>Idioma da Interface</Text>
@@ -315,7 +334,6 @@ export default function SettingsScreen() {
                     </List.Accordion>
                     <Divider />
 
-                    {/* SEÇÃO PRIVACIDADE */}
                     <List.Accordion title="Privacidade" id="privacy" left={props => <List.Icon {...props} icon="shield-account" />}>
                         <View style={styles.accordionBody}>
                             <Text style={styles.label}>Quem pode ver meu perfil</Text>
@@ -350,7 +368,6 @@ export default function SettingsScreen() {
                     </List.Accordion>
                     <Divider />
 
-                    {/* SEÇÃO CONTA E SEGURANÇA */}
                     <List.Accordion title="Conta" id="account" left={props => <List.Icon {...props} icon="lock" />}>
                         <View style={styles.accordionBody}>
                             <TextInput label="E-mail" value={user?.email} mode="outlined" disabled style={[styles.input, { opacity: 0.7 }]} />
@@ -421,7 +438,6 @@ export default function SettingsScreen() {
                 </View>
             </ScrollView>
 
-            {/* DIÁLOGOS DE CONFIRMAÇÃO */}
             <Portal>
                 <Dialog visible={!!dialogVisible} onDismiss={() => setDialogVisible(null)} style={{ backgroundColor: theme.colors.surface }}>
                     <Dialog.Title style={{ color: theme.colors.error }}>
@@ -442,9 +458,8 @@ export default function SettingsScreen() {
                                 setLoading(true);
                                 try {
                                     const endpoint = dialogVisible === 'delete' ? "/user/account" : "/user/deactivate";
-                                    // Usando endpoint genérico baseado na web, ajustar se necessário na API real
                                     if (dialogVisible === 'delete') await api.delete(endpoint);
-                                    else await api.post(endpoint); // Geralmente deactivate é POST
+                                    else await api.post(endpoint);
 
                                     await signOut();
                                 } catch (error) {
