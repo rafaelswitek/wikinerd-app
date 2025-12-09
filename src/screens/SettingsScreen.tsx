@@ -188,7 +188,7 @@ export default function SettingsScreen() {
 
         setSavingSecurity(true);
         try {
-            await api.put("/user/password", {
+            await api.put("/users/password", {
                 current_password: currentPassword,
                 password: newPassword,
                 password_confirmation: confirmPassword
@@ -457,9 +457,9 @@ export default function SettingsScreen() {
                                 setDialogVisible(null);
                                 setLoading(true);
                                 try {
-                                    const endpoint = dialogVisible === 'delete' ? "/user/account" : "/user/deactivate";
+                                    const endpoint = dialogVisible === 'delete' ? "/users/delete" : "/users/deactivate";
                                     if (dialogVisible === 'delete') await api.delete(endpoint);
-                                    else await api.post(endpoint);
+                                    else await api.delete(endpoint);
 
                                     await signOut();
                                 } catch (error) {
