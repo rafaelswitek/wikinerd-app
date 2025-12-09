@@ -16,6 +16,7 @@ import ForgotPasswordScreen from "./src/screens/auth/ForgotPasswordScreen";
 import ResetPasswordScreen from "./src/screens/auth/ResetPasswordScreen";
 import SettingsScreen from "./src/screens/SettingsScreen";
 import PersonDetailsScreen from "./src/screens/PersonDetailsScreen";
+import SplashScreen from "./src/screens/SplashScreen";
 
 const { LightTheme, DarkTheme } = adaptNavigationTheme({
   reactNavigationLight: NavDefaultTheme,
@@ -85,6 +86,11 @@ function AuthStack() {
 function AppStack({ theme }: { theme: any }) {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
+      <Stack.Screen
+        name="Splash"
+        component={SplashScreen}
+        options={{ headerShown: false }}
+      />
       <Stack.Screen name="Home" component={HomeScreen} />
       <Stack.Screen
         name="Profile"
