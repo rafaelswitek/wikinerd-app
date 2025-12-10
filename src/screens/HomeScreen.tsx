@@ -195,6 +195,8 @@ function CustomDrawerContent(props: DrawerContentComponentProps) {
         <CustomDrawerItem label="YouTube" icon="youtube" isComingSoon />
         <CustomDrawerItem label="Podcasts" icon="podcast" isComingSoon />
         <CustomDrawerItem label="Pessoas" icon="account-group-outline" onPress={() => navigation.navigate("PeopleList")} />
+        
+        <CustomDrawerItem label="Listas" icon="playlist-check" onPress={() => navigation.navigate("Lists")} />
 
         <DrawerSectionTitle title="Social" />
         <CustomDrawerItem label="Comunidade" icon="account-voice" isComingSoon />
