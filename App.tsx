@@ -25,6 +25,10 @@ const { LightTheme, DarkTheme } = adaptNavigationTheme({
 
 const paperColorsLight = {
   ...MD3LightTheme.colors,
+  primary: '#7c4dff', 
+  onPrimary: '#ffffff',
+  primaryContainer: '#e6e0ff',
+  onPrimaryContainer: '#260058',
   background: '#ffffff',
   surface: '#f1f5f9',
   surfaceVariant: '#e2e8f0',
@@ -34,6 +38,10 @@ const paperColorsLight = {
 
 const paperColorsDark = {
   ...MD3DarkTheme.colors,
+  primary: '#bfbaff',
+  onPrimary: '#431d9b',
+  primaryContainer: '#6242c7',
+  onPrimaryContainer: '#e6e0ff',
   background: '#060d17',
   surface: '#0f172a',
   surfaceVariant: '#1e293b',
@@ -45,9 +53,9 @@ const paperThemeLight = { ...MD3LightTheme, colors: paperColorsLight };
 const paperThemeDark = { ...MD3DarkTheme, colors: paperColorsDark };
 
 const navThemeLight = {
-  ...NavDefaultTheme,
+  ...LightTheme,
   colors: {
-    ...NavDefaultTheme.colors,
+    ...LightTheme.colors,
     primary: paperColorsLight.primary,
     background: paperColorsLight.background,
     card: paperColorsLight.surface,
@@ -58,9 +66,9 @@ const navThemeLight = {
 };
 
 const navThemeDark = {
-  ...NavDarkTheme,
+  ...DarkTheme,
   colors: {
-    ...NavDarkTheme.colors,
+    ...DarkTheme.colors,
     primary: paperColorsDark.primary,
     background: paperColorsDark.background,
     card: paperColorsDark.surface,
