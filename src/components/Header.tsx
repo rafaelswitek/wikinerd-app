@@ -32,7 +32,7 @@ export default function Header() {
                 color={theme.colors.onSurface}
             />
             
-            <Appbar.Action icon="bell" onPress={_handleNotification} color={theme.colors.onSurface} />
+            {/* <Appbar.Action icon="bell" onPress={_handleNotification} color={theme.colors.onSurface} /> */}
         </Appbar.Header>
     );
 }
