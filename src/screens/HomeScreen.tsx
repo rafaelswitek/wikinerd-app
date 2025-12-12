@@ -176,7 +176,6 @@ function CustomDrawerContent(props: DrawerContentComponentProps) {
       <Divider style={{ backgroundColor: theme.colors.outlineVariant }} />
 
       <ScrollView contentContainerStyle={{ paddingBottom: 20 }}>
-        <DrawerSectionTitle title="Mídia" />
         <CustomDrawerItem
           label="Início"
           icon="home-outline"
@@ -189,22 +188,17 @@ function CustomDrawerContent(props: DrawerContentComponentProps) {
           onPress={() => navigation.navigate("MoviesCatalog")}
         />
         <CustomDrawerItem label="Séries" icon="television" onPress={() => navigation.navigate("MainTabs", { screen: "Séries" })} />
+        <CustomDrawerItem label="Listas" icon="playlist-check" onPress={() => navigation.navigate("Lists")} />
+        <CustomDrawerItem label="Pessoas" icon="account-group-outline" onPress={() => navigation.navigate("PeopleList")} />
+        <Divider />
         <CustomDrawerItem label="Jogos" icon="controller" isComingSoon />
         <CustomDrawerItem label="Música" icon="music-note-eighth" isComingSoon />
         <CustomDrawerItem label="Livros" icon="book-open-page-variant" isComingSoon />
         <CustomDrawerItem label="YouTube" icon="youtube" isComingSoon />
         <CustomDrawerItem label="Podcasts" icon="podcast" isComingSoon />
-        <CustomDrawerItem label="Pessoas" icon="account-group-outline" onPress={() => navigation.navigate("PeopleList")} />
-        
-        <CustomDrawerItem label="Listas" icon="playlist-check" onPress={() => navigation.navigate("Lists")} />
-
-        <DrawerSectionTitle title="Social" />
         <CustomDrawerItem label="Comunidade" icon="account-voice" isComingSoon />
-
-        <DrawerSectionTitle title="Eventos" />
         <CustomDrawerItem label="Prêmios" icon="medal-outline" isComingSoon />
-
-        <DrawerSectionTitle title="Pessoal" />
+        <Divider />
         <CustomDrawerItem label="Perfil" icon="account-outline" onPress={() => navigation.navigate("Profile")} />
         <CustomDrawerItem label="Configurações" icon="cog-outline" onPress={() => navigation.navigate("Settings")} />
         <View style={{ marginTop: 20, paddingHorizontal: 16, paddingBottom: 20 + insets.bottom }}>
