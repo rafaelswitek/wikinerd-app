@@ -203,6 +203,25 @@ export default function ListsScreen() {
     </View>
   );
 
+  const handleDeleteList = useCallback((deletedListId: string) => {
+    // Remove da lista atual visualmente
+    setLists(prev => prev.filter(item => item.id !== deletedListId));
+
+    // Atualiza o contador da aba atual
+    setCounts(prev => ({
+      ...prev,
+      [activeTab]: Math.max(0, prev[activeTab] - 1)
+    }));
+
+    // Se estiver na aba 'mine', atualiza o contador do dashboard também
+    if (activeTab === 'mine') {
+      setStats(prev => ({
+        ...prev,
+        count: Math.max(0, prev.count - 1)
+      }));
+    }
+  }, [activeTab]);
+
   return (
     <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
       {loading && page === 1 ? (
@@ -220,6 +239,7 @@ export default function ListsScreen() {
                 list={item}
                 index={index}
                 onPress={() => console.log(`Abrir lista ${item.id}`)}
+                onDelete={handleDeleteList} // Passando o callback
               />
             </View>
           )}

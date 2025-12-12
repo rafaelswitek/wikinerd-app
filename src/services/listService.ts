@@ -1,3 +1,4 @@
+// src/services/listService.ts
 import { api } from "./api";
 import { ListSummary, AddListItemPayload, ListResponse } from "../types/List";
 
@@ -21,7 +22,7 @@ export const ListService = {
         params.filter = 'mine';
         break;
       case 'favorite':
-        params.filter = 'favorites'; // API espera 'favorites' no plural
+        params.filter = 'favorites';
         break;
       case 'official':
         params.filter = 'official';
@@ -38,5 +39,10 @@ export const ListService = {
   addItemsToList: async (listId: string, payload: AddListItemPayload) => {
     const response = await api.post(`/lists/${listId}/items`, payload);
     return response.data;
+  },
+
+  // Novo método para deletar lista
+  deleteList: async (listId: string) => {
+    await api.delete(`/lists/${listId}`);
   }
 };
