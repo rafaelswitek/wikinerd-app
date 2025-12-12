@@ -1,10 +1,11 @@
-import React from "react";
-import { ScrollView } from "react-native";
-import { Text } from "react-native-paper";
+import React, { useState } from "react";
+import { ScrollView, View } from "react-native";
+import { Text, Button } from "react-native-paper";
 import { Movie } from "../types/Movie";
 import { TvShow } from "../types/TvShow";
 import MediaCard from "./MediaCard";
 import MediaList from "./MediaList";
+import UserWatchlist from "./UserWatchlist";
 
 const renderMovieCard = (item: Movie) => <MediaCard media={item} />;
 const renderTvShowCard = (item: TvShow) => <MediaCard media={item} />;
@@ -14,34 +15,57 @@ interface Props {
 }
 
 export default function MediaTabs({ mediaType }: Props) {
+  const [showWatchlist, setShowWatchlist] = useState(false);
+
+  if (mediaType === "movies") {
+    return (
+      <View style={{ flex: 1 }}>
+        <View style={{ paddingHorizontal: 16, paddingTop: 16, paddingBottom: 8, flexDirection: 'row', gap: 10 }}>
+          <Button
+            mode={!showWatchlist ? "contained" : "outlined"}
+            onPress={() => setShowWatchlist(false)}
+            style={{ flex: 1 }}
+          >
+            Explorar
+          </Button>
+          <Button
+            mode={showWatchlist ? "contained" : "outlined"}
+            onPress={() => setShowWatchlist(true)}
+            style={{ flex: 1 }}
+          >
+            Quero Ver
+          </Button>
+        </View>
+
+        {showWatchlist ? (
+          <UserWatchlist />
+        ) : (
+          <ScrollView style={{ flex: 1, padding: 16 }}>
+            <MediaList<Movie>
+              title="Em Breve"
+              endpoint="https://api.wikinerd.com.br/api/movies/upcoming"
+              renderItem={renderMovieCard}
+            />
+
+            <MediaList<Movie>
+              title="Em Cartaz"
+              endpoint="https://api.wikinerd.com.br/api/movies/now-playing"
+              renderItem={renderMovieCard}
+            />
+
+            <MediaList<Movie>
+              title="Mais Avaliados"
+              endpoint="https://api.wikinerd.com.br/api/movies/top-rated"
+              renderItem={renderMovieCard}
+            />
+          </ScrollView>
+        )}
+      </View>
+    );
+  }
+
   return (
     <ScrollView style={{ flex: 1, padding: 16 }}>
-      {mediaType === "movies" && (
-        <>
-          <Text variant="titleMedium" style={{ marginBottom: 12 }}>
-            Filmes
-          </Text>
-
-          <MediaList<Movie>
-            title="Em Breve"
-            endpoint="https://api.wikinerd.com.br/api/movies/upcoming"
-            renderItem={renderMovieCard}
-          />
-
-          <MediaList<Movie>
-            title="Em Cartaz"
-            endpoint="https://api.wikinerd.com.br/api/movies/now-playing"
-            renderItem={renderMovieCard}
-          />
-
-          <MediaList<Movie>
-            title="Mais Avaliados"
-            endpoint="https://api.wikinerd.com.br/api/movies/top-rated"
-            renderItem={renderMovieCard}
-          />
-        </>
-      )}
-
       {mediaType === "tv" && (
         <>
           <Text variant="titleMedium" style={{ marginBottom: 12 }}>
