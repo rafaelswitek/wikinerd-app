@@ -1,20 +1,19 @@
-// src/components/ListCard.tsx
-import React, { useContext, useState } from "react";
+import React, { useContext, useState, useEffect } from "react";
 import { View, StyleSheet, TouchableOpacity, Alert, Share } from "react-native";
-import { Text, Avatar, useTheme, Menu, IconButton } from "react-native-paper";
+import { Text, Avatar, useTheme, Menu } from "react-native-paper";
 import Icon from "react-native-vector-icons/MaterialCommunityIcons";
 import { ListSummary } from "../types/List";
 import { AuthContext } from "../context/AuthContext";
 import { ListService } from "../services/listService";
+import { api } from "../services/api";
 
 interface Props {
   list: ListSummary;
   onPress: () => void;
-  onDelete?: (id: string) => void; // Callback para avisar a tela pai
+  onDelete?: (id: string) => void;
   index: number;
 }
 
-// Cores baseadas no print para dar variedade
 const CARD_COLORS = ["#312e81", "#064e3b", "#701a75", "#7c2d12", "#1e3a8a"];
 
 export default function ListCard({ list, onPress, onDelete, index }: Props) {
@@ -24,6 +23,17 @@ export default function ListCard({ list, onPress, onDelete, index }: Props) {
 
   const [menuVisible, setMenuVisible] = useState(false);
   const [loadingDelete, setLoadingDelete] = useState(false);
+
+  // Estado local para favoritar
+  const [isFavorite, setIsFavorite] = useState(list.is_favorite);
+  const [favCount, setFavCount] = useState(list.stats.favorites_count);
+  const [favLoading, setFavLoading] = useState(false);
+
+  // Atualiza estado local se a prop mudar (ex: ao voltar do details)
+  useEffect(() => {
+    setIsFavorite(list.is_favorite);
+    setFavCount(list.stats.favorites_count);
+  }, [list.is_favorite, list.stats.favorites_count]);
 
   const isOwner = user?.id === list.user.id;
 
@@ -38,13 +48,35 @@ export default function ListCard({ list, onPress, onDelete, index }: Props) {
   const handleShare = async () => {
     closeMenu();
     try {
-      // Ajuste a URL conforme seu app ou use deep link
       await Share.share({
-        message: `Confira minha lista "${list.title}" no WikiNerd!`,
+        message: `Confira a lista "${list.title}" no WikiNerd!`,
         title: list.title,
       });
     } catch (error) {
       console.log("Erro ao compartilhar", error);
+    }
+  };
+
+  const handleFavorite = async () => {
+    if (favLoading) return;
+    setFavLoading(true);
+
+    const prevFav = isFavorite;
+    const prevCount = favCount;
+
+    // Atualização Otimista
+    setIsFavorite(!prevFav);
+    setFavCount(prev => !prevFav ? prev + 1 : prev - 1);
+
+    try {
+      await api.post(`/lists/${list.id}/favorite`);
+    } catch (error) {
+      console.error("Erro ao favoritar", error);
+      // Reverte
+      setIsFavorite(prevFav);
+      setFavCount(prevCount);
+    } finally {
+      setFavLoading(false);
     }
   };
 
@@ -86,7 +118,6 @@ export default function ListCard({ list, onPress, onDelete, index }: Props) {
           <Text style={styles.badgeText}>{list.stats.items_count} items</Text>
         </View>
 
-        {/* Menu de Ações (Apenas para o dono ou menu de report para outros - aqui focado no dono) */}
         <View style={{ flexDirection: 'row', alignItems: 'center' }}>
           {!list.is_public && <Icon name="lock" size={16} color="rgba(255,255,255,0.7)" style={{ marginRight: 8 }} />}
 
@@ -101,29 +132,27 @@ export default function ListCard({ list, onPress, onDelete, index }: Props) {
               }
               contentStyle={{ backgroundColor: theme.colors.surface }}
             >
-              <Menu.Item
-                onPress={handleShare}
-                title="Compartilhar"
-                leadingIcon="share-variant"
-              />
-              <Menu.Item
-                onPress={handleDelete}
-                title="Excluir"
-                leadingIcon="trash-can-outline"
-                titleStyle={{ color: theme.colors.error }}
-              />
+              <Menu.Item onPress={handleShare} title="Compartilhar" leadingIcon="share-variant" />
+              <Menu.Item onPress={handleDelete} title="Excluir" leadingIcon="trash-can-outline" titleStyle={{ color: theme.colors.error }} />
             </Menu>
           ) : (
-            // Se não for dono, talvez mostrar apenas compartilhar ou nada (mantendo dots visualmente se quiser)
-            <TouchableOpacity onPress={handleShare}>
-              <Icon name="share-variant" size={20} color="white" />
-            </TouchableOpacity>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+              {/* Botão de Favoritar para Não-Donos */}
+              <TouchableOpacity onPress={handleFavorite}>
+                <Icon name={isFavorite ? "heart" : "heart-outline"} size={22} color={isFavorite ? "#ef4444" : "white"} />
+              </TouchableOpacity>
+
+              <TouchableOpacity onPress={handleShare}>
+                <Icon name="share-variant" size={20} color="white" />
+              </TouchableOpacity>
+            </View>
           )}
         </View>
       </View>
 
       <View style={styles.body}>
-        <Icon name={list.is_favorite ? "bookmark" : "bookmark-outline"} size={20} color="white" />
+        {/* Ícone de bookmark decorativo */}
+        <Icon name={isFavorite ? "bookmark" : "bookmark-outline"} size={20} color="white" />
         <Text style={styles.title} numberOfLines={2}>
           {list.title}
         </Text>
@@ -149,7 +178,8 @@ export default function ListCard({ list, onPress, onDelete, index }: Props) {
       <View style={styles.statsRow}>
         <View style={styles.statItem}>
           <Icon name="heart-outline" size={14} color="rgba(255,255,255,0.7)" />
-          <Text style={styles.statText}>{list.stats.favorites_count}</Text>
+          {/* Usa o estado local para atualizar imediatamente */}
+          <Text style={styles.statText}>{favCount}</Text>
         </View>
         <View style={styles.statItem}>
           <Icon name="comment-outline" size={14} color="rgba(255,255,255,0.7)" />
@@ -178,8 +208,8 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
-    alignItems: "center", // Ajustado para centralizar o ícone do menu
-    zIndex: 10, // Importante para o menu sobrepor
+    alignItems: "center",
+    zIndex: 10,
   },
   badge: {
     backgroundColor: "rgba(255,255,255,0.2)",
