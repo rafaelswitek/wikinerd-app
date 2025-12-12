@@ -50,9 +50,9 @@ export const ListService = {
     await api.delete(`/lists/${listId}`);
   },
 
-  getListDetails: async (id: string) => {
+  getListDetails: async (id: string, order: string = 'desc', sortBy: string = 'title') => {
     const response = await api.get<{ data: ListDetails }>(`/lists/${id}`, {
-      params: { order: 'desc', sortBy: 'title' }
+      params: { order, sortBy }
     });
     return response.data.data;
   },
@@ -63,5 +63,15 @@ export const ListService = {
       params: { search: query.toLowerCase() }
     });
     return response.data;
+  },
+
+  removeItemFromList: async (listId: string, itemId: string) => {
+    await api.delete(`/lists/${listId}/items/${itemId}`);
+  },
+
+  searchMedia: async (type: 'movie' | 'tv', query: string) => {
+    const endpoint = type === 'movie' ? '/movies' : '/tv-shows';
+    const response = await api.get(endpoint, { params: { search: query, per_page: 20 } });
+    return response.data.data;
   },
 };

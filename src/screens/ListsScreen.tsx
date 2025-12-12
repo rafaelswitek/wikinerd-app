@@ -250,7 +250,7 @@ export default function ListsScreen() {
               <ListCard
                 list={item}
                 index={index}
-                onPress={() => console.log(`Abrir lista ${item.id}`)}
+                onPress={() => navigation.navigate("ListDetails", { id: item.id })  }
                 onDelete={handleDeleteList} // Passando o callback
               />
             </View>

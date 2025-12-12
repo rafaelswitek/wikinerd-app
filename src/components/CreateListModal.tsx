@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { View, StyleSheet, ScrollView, Alert, Keyboard, TouchableOpacity } from "react-native";
-import { Modal, Portal, Text, TextInput, Button, Switch, useTheme, Chip, IconButton, ActivityIndicator, Divider } from "react-native-paper";
+import { Modal, Portal, Text, TextInput, Button, Switch, useTheme, Chip, IconButton, ActivityIndicator } from "react-native-paper";
 import { ListService } from "../services/listService";
 
 interface Props {
@@ -16,22 +16,18 @@ export default function CreateListModal({ visible, onDismiss, onSuccess }: Props
   const [description, setDescription] = useState("");
   const [isPublic, setIsPublic] = useState(true);
   
-  // Controle de Keywords
   const [keywordInput, setKeywordInput] = useState("");
   const [keywords, setKeywords] = useState<string[]>([]);
   const [suggestions, setSuggestions] = useState<{name: string}[]>([]);
   const [searchingKeywords, setSearchingKeywords] = useState(false);
-
   const [loading, setLoading] = useState(false);
 
-  // Efeito para buscar keywords enquanto digita (Debounce)
   useEffect(() => {
     const delayDebounceFn = setTimeout(async () => {
       if (keywordInput.trim().length >= 2) {
         setSearchingKeywords(true);
         try {
           const results = await ListService.searchKeywords(keywordInput);
-          // Filtra sugestões que já foram adicionadas
           setSuggestions(results.filter(r => !keywords.includes(r.name)));
         } catch (error) {
           console.error("Erro ao buscar keywords", error);
@@ -75,7 +71,7 @@ export default function CreateListModal({ visible, onDismiss, onSuccess }: Props
         keywords
       });
       
-      // Limpar formulário
+      // Reset
       setTitle("");
       setDescription("");
       setKeywords([]);
@@ -87,7 +83,7 @@ export default function CreateListModal({ visible, onDismiss, onSuccess }: Props
       onDismiss();
     } catch (error) {
       console.error(error);
-      Alert.alert("Erro", "Falha ao criar a lista. Tente novamente.");
+      Alert.alert("Erro", "Falha ao criar a lista.");
     } finally {
       setLoading(false);
     }
@@ -102,7 +98,6 @@ export default function CreateListModal({ visible, onDismiss, onSuccess }: Props
         </View>
 
         <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-          
           <Text style={[styles.label, { color: theme.colors.onSurface }]}>Título da Lista *</Text>
           <TextInput
             mode="outlined"
@@ -126,7 +121,7 @@ export default function CreateListModal({ visible, onDismiss, onSuccess }: Props
           <Text style={[styles.label, { color: theme.colors.onSurface }]}>Palavras-chave</Text>
           <TextInput
             mode="outlined"
-            placeholder="Pesquisar (ex: hero)"
+            placeholder="Pesquisar (selecione da lista)"
             value={keywordInput}
             onChangeText={setKeywordInput}
             right={searchingKeywords ? <TextInput.Icon icon={() => <ActivityIndicator size={16} />} /> : null}
@@ -137,8 +132,8 @@ export default function CreateListModal({ visible, onDismiss, onSuccess }: Props
           {suggestions.length > 0 && keywordInput.length > 0 && (
             <ScrollView 
               style={[styles.suggestionsBox, { backgroundColor: theme.colors.elevation.level2, borderColor: theme.colors.outlineVariant }]}
-              nestedScrollEnabled={true} // Permite scroll dentro do modal
-              keyboardShouldPersistTaps="handled" // Permite clicar na sugestão com teclado aberto
+              nestedScrollEnabled={true}
+              keyboardShouldPersistTaps="handled"
             >
               {suggestions.map((item, index) => (
                 <TouchableOpacity 
@@ -152,7 +147,6 @@ export default function CreateListModal({ visible, onDismiss, onSuccess }: Props
             </ScrollView>
           )}
           
-          {/* Chips selecionados */}
           <View style={styles.chipContainer}>
             {keywords.map(k => (
               <Chip key={k} onClose={() => removeKeyword(k)} style={styles.chip} compact>
@@ -167,7 +161,6 @@ export default function CreateListModal({ visible, onDismiss, onSuccess }: Props
               {isPublic ? "Lista Pública" : "Lista Privada"}
             </Text>
           </View>
-
         </ScrollView>
 
         <View style={styles.footer}>
@@ -185,22 +178,8 @@ const styles = StyleSheet.create({
   content: { padding: 16 },
   label: { fontWeight: 'bold', marginBottom: 6, marginTop: 12 },
   input: { backgroundColor: 'transparent' },
-  
-  suggestionsBox: {
-    borderWidth: 1,
-    borderTopWidth: 0,
-    borderBottomLeftRadius: 8,
-    borderBottomRightRadius: 8,
-    marginTop: -4,
-    maxHeight: 150, // Limita altura para ativar o scroll
-    zIndex: 1000,
-  },
-  suggestionItem: {
-    padding: 12,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: 'rgba(128,128,128,0.2)'
-  },
-
+  suggestionsBox: { borderWidth: 1, borderTopWidth: 0, borderBottomLeftRadius: 8, borderBottomRightRadius: 8, marginTop: -4, maxHeight: 150, zIndex: 1000 },
+  suggestionItem: { padding: 12, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: 'rgba(128,128,128,0.2)' },
   chipContainer: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 12 },
   chip: { marginRight: 4, marginBottom: 4 },
   switchContainer: { flexDirection: 'row', alignItems: 'center', marginTop: 24, marginBottom: 8 },
