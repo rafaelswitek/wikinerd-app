@@ -1,6 +1,6 @@
 // src/services/listService.ts
 import { api } from "./api";
-import { ListSummary, AddListItemPayload, ListResponse } from "../types/List";
+import { ListSummary, AddListItemPayload, ListResponse, CreateListPayload, ListDetails } from "../types/List";
 
 export const ListService = {
   getUserLists: async () => {
@@ -13,7 +13,7 @@ export const ListService = {
 
   getLists: async (filter: 'mine' | 'favorite' | 'community' | 'official', page = 1, search = "") => {
     const params: any = { page, per_page: 10 };
-    
+
     if (search) params.search = search;
 
     // Ajuste da lógica de filtros conforme as rotas especificadas
@@ -31,7 +31,7 @@ export const ListService = {
         // Comunidade usa a rota base /lists sem parametro filter
         break;
     }
-    
+
     const response = await api.get<ListResponse>("/lists", { params });
     return response.data;
   },
@@ -41,8 +41,27 @@ export const ListService = {
     return response.data;
   },
 
-  // Novo método para deletar lista
+  createList: async (payload: CreateListPayload) => {
+    const response = await api.post("/lists", payload);
+    return response.data.data; // Retorna a lista criada
+  },
+
   deleteList: async (listId: string) => {
     await api.delete(`/lists/${listId}`);
-  }
+  },
+
+  getListDetails: async (id: string) => {
+    const response = await api.get<{ data: ListDetails }>(`/lists/${id}`, {
+      params: { order: 'desc', sortBy: 'title' }
+    });
+    return response.data.data;
+  },
+
+  searchKeywords: async (query: string) => {
+    if (!query) return [];
+    const response = await api.get<{ name: string }[]>("/keywords", {
+      params: { search: query.toLowerCase() }
+    });
+    return response.data;
+  },
 };

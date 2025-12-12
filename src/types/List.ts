@@ -1,5 +1,8 @@
 // src/types/List.ts
 
+import { Movie } from "./Movie";
+import { TvShow } from "./TvShow";
+
 export interface ListStats {
   items_count: number;
   views_count: number;
@@ -42,4 +45,22 @@ export interface ListResponse {
     last_page: number;
     total: number;
   };
+}
+
+export interface CreateListPayload {
+  title: string;
+  description?: string;
+  is_public: boolean;
+  keywords?: string[];
+}
+
+export interface ListItem {
+  item_id: string;
+  user_order: number;
+  media_type: string;
+  media: Movie | TvShow;
+}
+
+export interface ListDetails extends ListSummary {
+  items: ListItem[];
 }

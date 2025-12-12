@@ -9,6 +9,7 @@ import Icon from "react-native-vector-icons/MaterialCommunityIcons";
 import { ListService } from "../services/listService";
 import { ListSummary } from "../types/List";
 import ListCard from "../components/ListCard";
+import CreateListModal from "../components/CreateListModal";
 
 type FilterType = 'mine' | 'favorite' | 'community' | 'official';
 
@@ -26,6 +27,7 @@ export default function ListsScreen() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
+  const [createModalVisible, setCreateModalVisible] = useState(false);
 
   // Totais das abas
   const [counts, setCounts] = useState<Record<FilterType, number>>({
@@ -37,6 +39,16 @@ export default function ListsScreen() {
 
   // Stats do Dashboard
   const [stats, setStats] = useState({ items: 0, count: 0, views: 0, likes: 0 });
+
+  const handleCreateSuccess = (listId: string) => {
+    // Atualiza a lista atual para mostrar a nova lista se estiver na aba 'mine'
+    if (activeTab === 'mine') {
+      fetchLists(1, true);
+      fetchAllCounts();
+    }
+    // Navega imediatamente para a tela de detalhes da nova lista
+    navigation.navigate("ListDetails", { id: listId });
+  };
 
   // Busca os totais de todas as abas (para o cabeçalho)
   const fetchAllCounts = useCallback(async () => {
@@ -192,7 +204,7 @@ export default function ListsScreen() {
 
       {/* Create New List Button */}
       {activeTab === 'mine' && (
-        <TouchableOpacity style={[styles.createCard, { borderColor: theme.colors.outlineVariant }]} onPress={() => console.log("Criar")}>
+        <TouchableOpacity style={[styles.createCard, { borderColor: theme.colors.outlineVariant }]} onPress={() => setCreateModalVisible(true)}>
           <Icon name="plus" size={32} color={theme.colors.secondary} />
           <Text style={{ marginTop: 8, fontWeight: 'bold', color: theme.colors.onSurface }}>Criar Nova Lista</Text>
           <Text style={{ textAlign: 'center', fontSize: 11, color: theme.colors.secondary, marginTop: 4, paddingHorizontal: 20 }}>
@@ -259,6 +271,11 @@ export default function ListsScreen() {
           }
         />
       )}
+      <CreateListModal
+        visible={createModalVisible}
+        onDismiss={() => setCreateModalVisible(false)}
+        onSuccess={handleCreateSuccess}
+      />
     </View>
   );
 }
