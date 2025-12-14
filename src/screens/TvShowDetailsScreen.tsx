@@ -1,10 +1,10 @@
-import React, { useState, useContext } from "react";
-import { ScrollView, View, StyleSheet, StatusBar, TouchableOpacity, Linking, Modal, Share, Image, Dimensions, FlatList } from "react-native";
-import { Text, ActivityIndicator, Chip, useTheme } from "react-native-paper";
+import React, { useState, useContext, useEffect, useMemo } from "react";
+import { ScrollView, View, StyleSheet, StatusBar, TouchableOpacity, Linking, Modal, Share, Image, Dimensions, FlatList, TextInput } from "react-native";
+import { Text, ActivityIndicator, Chip, useTheme, Button, Divider, Menu } from "react-native-paper";
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 
 import { useTvShowDetails } from "../hooks/useTvShowDetails";
-import { getCertificationColor, formatCurrency, formatDate, getSocialData } from "../utils/helpers";
+import { getCertificationColor, getSocialData } from "../utils/helpers";
 import { Country, Language } from "../types/Movie";
 import { MediaImage } from "../types/Interactions";
 import { AuthContext } from "../context/AuthContext";
@@ -12,6 +12,13 @@ import { AuthContext } from "../context/AuthContext";
 import AddToListModal from "../components/AddToListModal";
 import MediaHeader from "../components/MediaHeader";
 import MediaActionButtons from "../components/MediaActionButtons";
+import EpisodeItem from "../components/EpisodeItem";
+import { Review, ReviewStats } from "../types/Review";
+import { api } from "../services/api";
+import ReviewStatsCard from "../components/ReviewStats";
+import ReviewCard from "../components/ReviewCard";
+import WriteReviewModal from "../components/WriteReviewModal";
+import ShareReviewModal from "../components/ShareReviewModal";
 
 const { width, height } = Dimensions.get("window");
 
@@ -22,24 +29,46 @@ export default function TvShowDetailsScreen({ route }: any) {
 
   const {
     tvShow, providers, cast, crew, images, videos,
-    userInteraction, loading, interactionLoading,
-    handleInteraction
+    userInteraction, loading, interactionLoading, seasonLoading,
+    handleInteraction, markSeasonWatched, unmarkSeasonWatched, toggleEpisodeWatched
   } = useTvShowDetails(slug);
 
-  const [activeTab, setActiveTab] = useState<"about" | "seasons" | "cast" | "crew" | "videos" | "images">("about");
+  const [activeTab, setActiveTab] = useState<"about" | "episodes" | "cast" | "crew" | "images" | "videos" | "reviews">("about");
   const [selectedImage, setSelectedImage] = useState<MediaImage | null>(null);
+
+  // Estados Episódios
+  const [selectedSeasonNumber, setSelectedSeasonNumber] = useState<number>(1);
+  const [showSeasonMenu, setShowSeasonMenu] = useState(false);
+
+  // Estados Busca Elenco/Equipe
+  const [castSearch, setCastSearch] = useState("");
+  const [crewSearch, setCrewSearch] = useState("");
+
+  // Estados Reviews
+  const [reviews, setReviews] = useState<Review[]>([]);
+  const [reviewStats, setReviewStats] = useState<ReviewStats | null>(null);
+  const [reviewsLoading, setReviewsLoading] = useState(false);
+  const [reviewsPage, setReviewsPage] = useState(1);
+  const [hasMoreReviews, setHasMoreReviews] = useState(false);
+  const [writeModalVisible, setWriteModalVisible] = useState(false);
+  const [shareModalVisible, setShareModalVisible] = useState(false);
+  const [justCreatedReview, setJustCreatedReview] = useState<Review | null>(null);
+  const [filterReviewSeason, setFilterReviewSeason] = useState<number | 'all'>('all');
+  const [filterReviewEpisode, setFilterReviewEpisode] = useState<number | 'all'>('all');
+
+  // Modais
   const [isImageModalVisible, setIsImageModalVisible] = useState(false);
   const [listModalVisible, setListModalVisible] = useState(false);
   const [showAllProviders, setShowAllProviders] = useState(false);
 
-  const openImageModal = (image: MediaImage) => { setSelectedImage(image); setIsImageModalVisible(true); };
+  const openImageModal = (image: any) => { setSelectedImage(image); setIsImageModalVisible(true); };
   const closeImageModal = () => { setIsImageModalVisible(false); setSelectedImage(null); };
 
   const handleShare = async () => {
     if (!tvShow) return;
     try {
       await Share.share({
-        message: `Confira a série "${tvShow.title}" no WikiNerd!\nhttps://wikinerd.com.br/series/${slug}`,
+        message: `Confira "${tvShow.title}" no WikiNerd!\nhttps://wikinerd.com.br/series/${slug}`,
         url: `https://wikinerd.com.br/series/${slug}`,
         title: `WikiNerd: ${tvShow.title}`
       });
@@ -67,6 +96,70 @@ export default function TvShowDetailsScreen({ route }: any) {
   ].filter(s => s.data.length > 0);
   const remainingOptionsCount = Math.max(0, availableSections.length - 1);
 
+  // Dados filtrados
+  const filteredCast = useMemo(() => {
+    if (!castSearch) return cast;
+    return cast.filter(c => c.name.toLowerCase().includes(castSearch.toLowerCase()) || c.character.toLowerCase().includes(castSearch.toLowerCase()));
+  }, [cast, castSearch]);
+
+  const filteredCrew = useMemo(() => {
+    if (!crewSearch) return crew;
+    return crew.filter(c => c.name.toLowerCase().includes(crewSearch.toLowerCase()) || c.job.toLowerCase().includes(crewSearch.toLowerCase()));
+  }, [crew, crewSearch]);
+
+  const currentSeason = useMemo(() => {
+    return tvShow?.seasons.find(s => s.season_number === selectedSeasonNumber);
+  }, [tvShow, selectedSeasonNumber]);
+
+  const isSeasonFullyWatched = useMemo(() => {
+    if (!currentSeason?.episodes || currentSeason.episodes.length === 0) return false;
+    return currentSeason.episodes.every(ep => !!ep.watched_date);
+  }, [currentSeason]);
+
+  // Lógica de Reviews (simplificada baseada na de filmes, adaptada para filtros)
+  const fetchReviewsData = async (page = 1) => {
+    if (!tvShow?.id) return;
+    if (page === 1) setReviewsLoading(true);
+
+    try {
+      let url = `https://api.wikinerd.com.br/api/movies/${tvShow.id}/reviews?page=${page}`; // Usando endpoint genérico ou específico de série se houver
+      // Nota: Ajuste a URL para endpoint de reviews de séries se for diferente no seu backend, ex: /tv-shows/:id/reviews
+      // O web usa getTVShowReviews, assumindo endpoint similar
+      url = `https://api.wikinerd.com.br/api/tv-shows/${tvShow.id}/reviews?page=${page}`;
+
+      const promises: Promise<any>[] = [api.get(url)];
+      if (page === 1) promises.push(api.get(`https://api.wikinerd.com.br/api/tv-shows/${tvShow.id}/reviews/stats`));
+
+      const results = await Promise.all(promises);
+      const reviewsResponse = results[0].data;
+
+      if (page === 1) {
+        setReviews(reviewsResponse.data);
+        if (results[1]) setReviewStats(results[1].data);
+      } else {
+        setReviews(prev => [...prev, ...reviewsResponse.data]);
+      }
+      setHasMoreReviews(reviewsResponse.meta.current_page < reviewsResponse.meta.last_page);
+      setReviewsPage(page);
+    } catch (error) {
+      console.log("Erro ao carregar reviews", error);
+    } finally {
+      setReviewsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === 'reviews' && reviews.length === 0) fetchReviewsData();
+  }, [activeTab]);
+
+  const filteredReviews = useMemo(() => {
+    return reviews.filter(r => {
+      if (filterReviewSeason !== 'all' && r.episode?.season_number !== filterReviewSeason) return false;
+      if (filterReviewEpisode !== 'all' && r.episode?.episode_number !== filterReviewEpisode) return false;
+      return true;
+    });
+  }, [reviews, filterReviewSeason, filterReviewEpisode]);
+
   if (loading) {
     return (
       <View style={[styles.loadingContainer, { backgroundColor: theme.colors.background }]}>
@@ -78,12 +171,13 @@ export default function TvShowDetailsScreen({ route }: any) {
   if (!tvShow) {
     return (
       <View style={[styles.loadingContainer, { backgroundColor: theme.colors.background }]}>
-        <Text style={{ color: theme.colors.onBackground }}>Série não encontrada.</Text>
+        <Text>Série não encontrada.</Text>
       </View>
     );
   }
 
   const creators = tvShow.creators?.map(c => c.name).join(", ");
+  const sortedSeasons = [...(tvShow.seasons || [])].sort((a, b) => a.season_number - b.season_number);
 
   return (
     <>
@@ -106,24 +200,25 @@ export default function TvShowDetailsScreen({ route }: any) {
         </View>
 
         <View style={[styles.section, { borderTopColor: theme.colors.outlineVariant }]}>
-          <View style={[styles.tabBar, { backgroundColor: theme.colors.surface }]}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabBar}>
             {renderTabButton("about", "Sobre")}
-            {renderTabButton("seasons", "Temporadas")}
+            {renderTabButton("episodes", "Episódios")}
             {renderTabButton("cast", "Elenco")}
             {renderTabButton("crew", "Equipe")}
             {renderTabButton("images", "Imagens")}
             {renderTabButton("videos", "Vídeos")}
-          </View>
+            {renderTabButton("reviews", "Avaliações")}
+          </ScrollView>
 
           {activeTab === "about" && (
-            <>
+            <View>
               <Text style={[styles.sectionTitle, { color: theme.colors.onBackground }]}>Sinopse</Text>
-              <Text style={[styles.bodyText, { color: theme.colors.onSurfaceVariant }]}>{tvShow.overview}</Text>
+              <Text style={[styles.bodyText, { color: theme.colors.onSurfaceVariant }]}>{tvShow.overview || "Sem sinopse."}</Text>
 
-              {creators && creators.length > 0 && (
+              {creators && (
                 <View style={{ marginTop: 20 }}>
-                  <Text style={[styles.sectionTitle, { color: theme.colors.onBackground, fontSize: 16, marginBottom: 4 }]}>Criação</Text>
-                  <Text style={[styles.bodyText, { color: theme.colors.onSurfaceVariant, lineHeight: 20 }]}>{creators}</Text>
+                  <Text style={[styles.sectionTitle, { fontSize: 16 }]}>Criadores</Text>
+                  <Text style={[styles.bodyText, { color: theme.colors.onSurfaceVariant }]}>{creators}</Text>
                 </View>
               )}
 
@@ -216,64 +311,98 @@ export default function TvShowDetailsScreen({ route }: any) {
                   </View>
                 </View>
               )}
-            </>
+            </View>
           )}
 
-          {activeTab === "seasons" && (
+          {activeTab === "episodes" && (
             <View>
-              <Text style={[styles.sectionTitle, { color: theme.colors.onBackground }]}>Temporadas</Text>
-              {tvShow.seasons?.map((season) => (
-                <View key={season.id} style={[styles.seasonCard, { backgroundColor: theme.colors.surface, borderColor: theme.colors.outlineVariant }]}>
-                    <Image 
-                        source={{ uri: season.poster_path?.tmdb ? `https://image.tmdb.org/t/p/w185${season.poster_path.tmdb}` : undefined }} 
-                        style={[styles.seasonPoster, { backgroundColor: theme.colors.surfaceVariant }]} 
+              <View style={styles.seasonHeader}>
+                <Menu
+                  visible={showSeasonMenu}
+                  onDismiss={() => setShowSeasonMenu(false)}
+                  anchor={
+                    <Button mode="outlined" onPress={() => setShowSeasonMenu(true)} icon="chevron-down" contentStyle={{ flexDirection: 'row-reverse' }}>
+                      {currentSeason ? currentSeason.title : "Selecionar Temporada"}
+                    </Button>
+                  }
+                >
+                  {sortedSeasons.map(season => (
+                    <Menu.Item
+                      key={season.id}
+                      onPress={() => { setSelectedSeasonNumber(season.season_number); setShowSeasonMenu(false); }}
+                      title={season.title}
                     />
-                    <View style={styles.seasonInfo}>
-                        <Text style={[styles.seasonTitle, { color: theme.colors.onSurface }]}>{season.title}</Text>
-                        <Text style={[styles.seasonMeta, { color: theme.colors.secondary }]}>
-                            {season.episodes?.length || 0} Episódios • {season.air_date ? season.air_date.split('-')[0] : 'N/A'}
-                        </Text>
-                        <Text style={[styles.seasonOverview, { color: theme.colors.onSurfaceVariant }]} numberOfLines={3}>{season.overview || "Sem descrição disponível."}</Text>
-                        {season.rating_tmdb_average && (
-                            <View style={styles.seasonRating}>
-                                <Icon name="star" size={14} color="#f5c518" />
-                                <Text style={[styles.ratingValue, { color: theme.colors.onSurface }]}>{Number(season.rating_tmdb_average).toFixed(1)}</Text>
-                            </View>
-                        )}
-                    </View>
-                </View>
-              ))}
+                  ))}
+                </Menu>
+
+                {user && currentSeason && (
+                  <Button
+                    mode="contained"
+                    compact
+                    onPress={() => isSeasonFullyWatched ? unmarkSeasonWatched(currentSeason.id) : markSeasonWatched(currentSeason.id)}
+                    loading={seasonLoading}
+                    buttonColor={isSeasonFullyWatched ? theme.colors.error : theme.colors.primary}
+                  >
+                    {isSeasonFullyWatched ? "Desmarcar Todos" : "Marcar Todos"}
+                  </Button>
+                )}
+              </View>
+
+              {currentSeason?.episodes?.length ? (
+                currentSeason.episodes.map(episode => (
+                  <EpisodeItem
+                    key={episode.id}
+                    episode={episode}
+                    serieSlug={slug}
+                    onToggleWatched={toggleEpisodeWatched}
+                  />
+                ))
+              ) : (
+                <Text style={{ textAlign: 'center', marginTop: 20, color: theme.colors.secondary }}>Nenhum episódio encontrado.</Text>
+              )}
             </View>
           )}
 
           {activeTab === "cast" && (
             <View>
-              <Text style={[styles.sectionTitle, { color: theme.colors.onBackground }]}>Elenco Principal</Text>
-              {cast.map((person) => (
-                <View key={person.id} style={[styles.personRow, { borderBottomColor: theme.colors.outlineVariant }]}>
-                  <Image source={{ uri: person.profile_path?.tmdb ? `https://image.tmdb.org/t/p/w185${person.profile_path.tmdb}` : undefined }} style={[styles.avatar, { backgroundColor: theme.colors.surfaceVariant }]} />
-                  <View style={styles.personInfo}>
-                    <Text style={[styles.personName, { color: theme.colors.onBackground }]}>{person.name}</Text>
-                    <Text style={[styles.personRole, { color: theme.colors.secondary }]}>{person.character}</Text>
+              <TextInput
+                style={[styles.searchInput, { color: theme.colors.onSurface, backgroundColor: theme.colors.surfaceVariant }]}
+                placeholder="Buscar ator ou personagem..."
+                placeholderTextColor={theme.colors.onSurfaceVariant}
+                value={castSearch}
+                onChangeText={setCastSearch}
+              />
+              <View style={styles.gridContainer}>
+                {filteredCast.map(person => (
+                  <View key={`${person.id}-${person.character}`} style={styles.gridItem}>
+                    <Image source={{ uri: person.profile_path?.tmdb ? `https://image.tmdb.org/t/p/w185${person.profile_path.tmdb}` : undefined }} style={styles.gridImage} />
+                    <Text numberOfLines={1} style={[styles.gridName, { color: theme.colors.onSurface }]}>{person.name}</Text>
+                    <Text numberOfLines={1} style={[styles.gridRole, { color: theme.colors.secondary }]}>{person.character}</Text>
                   </View>
-                </View>
-              ))}
+                ))}
+              </View>
             </View>
           )}
 
           {activeTab === "crew" && (
             <View>
-              <Text style={[styles.sectionTitle, { color: theme.colors.onBackground }]}>Equipe Técnica</Text>
-              {crew.map((person) => (
-                <View key={person.id + person.job.job} style={[styles.personRow, { borderBottomColor: theme.colors.outlineVariant }]}>
-                  <Image source={{ uri: person.profile_path?.tmdb ? `https://image.tmdb.org/t/p/w185${person.profile_path.tmdb}` : undefined }} style={[styles.avatar, { backgroundColor: theme.colors.surfaceVariant }]} />
-                  <View style={styles.personInfo}>
-                    <Text style={[styles.personName, { color: theme.colors.onBackground }]}>{person.name}</Text>
-                    <Text style={[styles.personRole, { color: theme.colors.secondary }]}>{person.job.job}</Text>
-                    <Text style={[styles.personDept, { color: theme.colors.tertiary }]}>{person.job.department}</Text>
+              <TextInput
+                style={[styles.searchInput, { color: theme.colors.onSurface, backgroundColor: theme.colors.surfaceVariant }]}
+                placeholder="Buscar membro da equipe..."
+                placeholderTextColor={theme.colors.onSurfaceVariant}
+                value={crewSearch}
+                onChangeText={setCrewSearch}
+              />
+              <View style={styles.gridContainer}>
+                {filteredCrew.map(person => (
+                  <View key={`${person.id}-${person.job}`} style={styles.gridItem}>
+                    <Image source={{ uri: person.profile_path?.tmdb ? `https://image.tmdb.org/t/p/w185${person.profile_path.tmdb}` : undefined }} style={styles.gridImage} />
+                    <Text numberOfLines={1} style={[styles.gridName, { color: theme.colors.onSurface }]}>{person.name}</Text>
+                    <Text numberOfLines={1} style={[styles.gridRole, { color: theme.colors.secondary }]}>{person.job}</Text>
+                    <Text numberOfLines={1} style={[styles.personDept, { color: theme.colors.tertiary }]}>{person.department}</Text>
                   </View>
-                </View>
-              ))}
+                ))}
+              </View>
             </View>
           )}
 
@@ -283,7 +412,7 @@ export default function TvShowDetailsScreen({ route }: any) {
               {images.length === 0 && <Text style={[styles.metaText, { color: theme.colors.onSurfaceVariant }]}>Nenhuma imagem encontrada.</Text>}
               <View style={styles.imagesGrid}>
                 {images.map((img) => (
-                  <TouchableOpacity key={img.id} style={[styles.galleryImageContainer, { backgroundColor: theme.colors.surfaceVariant }]} onPress={() => openImageModal(img)} activeOpacity={0.8}>
+                  <TouchableOpacity key={img.id} style={[styles.galleryImageContainer, { backgroundColor: theme.colors.surfaceVariant }]} onPress={() => openImageModal(img)}>
                     <Image source={{ uri: `https://image.tmdb.org/t/p/w500${img.file_path}` }} style={styles.galleryImage} resizeMode="cover" />
                     <View style={styles.imageBadge}><Text style={styles.imageBadgeText}>{img.type ? img.type.charAt(0).toUpperCase() + img.type.slice(1) : 'Imagem'}</Text></View>
                   </TouchableOpacity>
@@ -294,46 +423,49 @@ export default function TvShowDetailsScreen({ route }: any) {
 
           {activeTab === "videos" && (
             <View>
-              <Text style={[styles.sectionTitle, { color: theme.colors.onBackground }]}>Vídeos</Text>
-              {videos.length === 0 && <Text style={[styles.metaText, { color: theme.colors.onSurfaceVariant }]}>Nenhum vídeo disponível no momento.</Text>}
               {videos.map((vid) => (
                 <TouchableOpacity key={vid.id} style={[styles.videoItem, { backgroundColor: theme.colors.surface }]} onPress={() => vid.site === "YouTube" && Linking.openURL(`https://www.youtube.com/watch?v=${vid.key}`)}>
                   <Image source={{ uri: `https://img.youtube.com/vi/${vid.key}/0.jpg` }} style={[styles.videoThumbnail, { backgroundColor: theme.colors.surfaceVariant }]} />
                   <View style={styles.videoInfo}>
                     <Text style={[styles.videoName, { color: theme.colors.onSurface }]} numberOfLines={2}>{vid.name}</Text>
-                    <Text style={[styles.videoType, { color: theme.colors.secondary }]}>{vid.type}</Text>
+                    <Text style={[styles.videoType, { color: theme.colors.secondary }]} numberOfLines={2}>{vid.type}</Text>
                   </View>
-                  <Icon name="play-circle-outline" size={32} color={theme.colors.onSurfaceVariant} />
+                  <Icon name="play-circle" size={30} color={theme.colors.primary} />
                 </TouchableOpacity>
               ))}
+            </View>
+          )}
+
+          {activeTab === "reviews" && (
+            <View>
+              {reviewStats && <ReviewStatsCard stats={reviewStats} />}
+
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 10 }}>
+                <Text style={{ fontSize: 16, fontWeight: 'bold', color: theme.colors.onBackground }}>Avaliações</Text>
+                {/* Botão de filtro simplificado ou implementar modal de filtros aqui */}
+              </View>
+
+              {filteredReviews.length === 0 ? (
+                <Text style={{ textAlign: 'center', color: theme.colors.secondary }}>Nenhuma avaliação encontrada.</Text>
+              ) : (
+                filteredReviews.map(review => (
+                  <ReviewCard key={review.review_id} review={review} />
+                ))
+              )}
             </View>
           )}
         </View>
       </ScrollView>
 
-      {/* MODAIS */}
-      <Modal visible={isImageModalVisible} transparent={true} onRequestClose={closeImageModal} animationType="fade">
+      {/* MODAL IMAGEM */}
+      <Modal visible={isImageModalVisible} transparent={true} onRequestClose={closeImageModal}>
         <View style={styles.modalContainer}>
-          <TouchableOpacity style={styles.modalCloseArea} activeOpacity={1} onPress={closeImageModal}>
-            {selectedImage && (
-              <Image source={{ uri: `https://image.tmdb.org/t/p/original${selectedImage.file_path}` }} style={styles.fullscreenImage} resizeMode="contain" />
-            )}
-            <TouchableOpacity style={styles.closeButton} onPress={closeImageModal}>
-              <Icon name="close-circle" size={40} color="rgba(255,255,255,0.8)" />
-            </TouchableOpacity>
-          </TouchableOpacity>
+          <TouchableOpacity style={styles.closeButton} onPress={closeImageModal}><Icon name="close" size={30} color="#fff" /></TouchableOpacity>
+          {selectedImage && <Image source={{ uri: `https://image.tmdb.org/t/p/original${selectedImage.file_path}` }} style={styles.fullscreenImage} resizeMode="contain" />}
         </View>
       </Modal>
 
-      {tvShow && (
-        <AddToListModal
-          visible={listModalVisible}
-          onDismiss={() => setListModalVisible(false)}
-          mediaId={tvShow.id}
-          mediaType="tv"
-          mediaTitle={tvShow.title}
-        />
-      )}
+      {tvShow && <AddToListModal visible={listModalVisible} onDismiss={() => setListModalVisible(false)} mediaId={tvShow.id} mediaType="tv" mediaTitle={tvShow.title} />}
     </>
   );
 }
@@ -347,9 +479,11 @@ const styles = StyleSheet.create({
   innerSection: { marginTop: 24 },
   sectionTitle: { fontSize: 18, fontWeight: 'bold', marginBottom: 12 },
   bodyText: { lineHeight: 22, textAlign: 'justify' },
-  tabBar: { flexDirection: 'row', padding: 4, borderRadius: 8, marginBottom: 16, flexWrap: 'wrap', rowGap: 4 },
-  tabActive: { paddingVertical: 6, paddingHorizontal: 12, borderRadius: 6, fontWeight: 'bold', overflow: 'hidden' },
-  tabInactive: { paddingVertical: 6, paddingHorizontal: 12 },
+  tabBar: { flexDirection: 'row', marginBottom: 16 },
+  tabActive: { paddingVertical: 6, paddingHorizontal: 12, borderRadius: 16, fontWeight: 'bold', marginRight: 8, overflow: 'hidden' },
+  tabInactive: { paddingVertical: 6, paddingHorizontal: 12, marginRight: 8 },
+  seasonHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
+  searchInput: { padding: 10, borderRadius: 8, marginBottom: 16 },
   providersHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
   seeMoreBadge: { flexDirection: 'row', alignItems: 'center', borderWidth: 1, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 4 },
   seeMoreText: { fontSize: 12, fontWeight: 'bold' },
@@ -383,19 +517,24 @@ const styles = StyleSheet.create({
   personName: { fontSize: 16, fontWeight: 'bold' },
   personRole: { fontSize: 14 },
   personDept: { fontSize: 12 },
+  gridContainer: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' },
+  gridItem: { width: '48%', marginBottom: 16, alignItems: 'center' },
+  gridImage: { width: '100%', height: 150, borderRadius: 8, marginBottom: 4, backgroundColor: '#333' },
+  gridName: { fontWeight: 'bold', fontSize: 14 },
+  gridRole: { fontSize: 12 },
   imagesGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  galleryImageContainer: { width: (width - 40) / 2, height: 120, borderRadius: 4, marginBottom: 8, position: 'relative', overflow: 'hidden' },
+  galleryImageContainer: { width: (width - 40) / 3, height: 80, borderRadius: 4, marginBottom: 4 },
   galleryImage: { width: '100%', height: '100%' },
   imageBadge: { position: 'absolute', bottom: 6, right: 6, backgroundColor: 'rgba(0,0,0,0.7)', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 4 },
   imageBadgeText: { color: 'white', fontSize: 11, fontWeight: 'bold' },
   modalContainer: { flex: 1, backgroundColor: 'rgba(0,0,0,0.95)', justifyContent: 'center', alignItems: 'center' },
   modalCloseArea: { flex: 1, width: '100%', justifyContent: 'center', alignItems: 'center', position: 'relative' },
   fullscreenImage: { width: width, height: height },
-  closeButton: { position: 'absolute', top: 50, right: 25, zIndex: 10 },
-  videoItem: { flexDirection: 'row', alignItems: 'center', marginBottom: 16, borderRadius: 8, padding: 8 },
-  videoThumbnail: { width: 120, height: 68, borderRadius: 4 },
-  videoInfo: { flex: 1, marginLeft: 12 },
-  videoName: { fontSize: 14, fontWeight: 'bold', marginBottom: 4 },
+  closeButton: { position: 'absolute', top: 40, right: 20, zIndex: 10 },
+  videoItem: { flexDirection: 'row', alignItems: 'center', marginBottom: 12, padding: 8, borderRadius: 8 },
+  videoThumbnail: { width: 100, height: 60, borderRadius: 4, marginRight: 10 },
+  videoInfo: { flex: 1 },
+  videoName: { fontWeight: 'bold', fontSize: 12 },
   videoType: { fontSize: 12 },
   metaText: { fontSize: 12 },
   seasonCard: { flexDirection: 'row', marginBottom: 16, borderRadius: 8, overflow: 'hidden', borderWidth: 1 },
