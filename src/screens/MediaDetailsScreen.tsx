@@ -221,7 +221,7 @@ export default function MediaDetailsScreen({ route }: any) {
       <ScrollView style={[styles.container, { backgroundColor: theme.colors.background }]} contentContainerStyle={{ paddingBottom: 40 }}>
         <StatusBar barStyle={theme.dark ? "light-content" : "dark-content"} backgroundColor={theme.colors.background} />
 
-        <MediaHeader movie={movie} handleShare={handleShare} />
+        <MediaHeader media={movie} handleShare={handleShare} />
 
         <MediaActionButtons
           userInteraction={userInteraction}
