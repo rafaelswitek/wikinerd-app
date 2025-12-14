@@ -3,24 +3,30 @@ import { View, Image, StyleSheet, Dimensions } from "react-native";
 import { Text, useTheme, Button } from "react-native-paper";
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { Movie } from "../types/Movie";
+import { TvShow } from "../types/TvShow";
 import { getCertificationColor, getMediaYear, formatRuntime } from "../utils/helpers";
 
 const { width } = Dimensions.get("window");
 
 interface Props {
-  movie: Movie;
+  media: Movie | TvShow;
   handleShare: () => void;
 }
 
-export default function MediaHeader({ movie, handleShare }: Props) {
+export default function MediaHeader({ media, handleShare }: Props) {
   const theme = useTheme();
   
-  const backdrop = movie.backdrop_path?.tmdb
-    ? `https://image.tmdb.org/t/p/w780${movie.backdrop_path.tmdb}`
+  const backdrop = media.backdrop_path?.tmdb
+    ? `https://image.tmdb.org/t/p/w780${media.backdrop_path.tmdb}`
     : null;
-  const poster = movie.poster_path?.tmdb
-    ? `https://image.tmdb.org/t/p/w342${movie.poster_path.tmdb}`
+  const poster = media.poster_path?.tmdb
+    ? `https://image.tmdb.org/t/p/w342${media.poster_path.tmdb}`
     : null;
+
+  const isTv = 'number_of_seasons' in media;
+  const runtimeInfo = isTv 
+    ? `${(media as TvShow).number_of_seasons} Temporada${(media as TvShow).number_of_seasons !== 1 ? 's' : ''}`
+    : formatRuntime((media as Movie).runtime);
 
   return (
     <View style={styles.headerWrapper}>
@@ -29,28 +35,28 @@ export default function MediaHeader({ movie, handleShare }: Props) {
       <View style={styles.headerContent}>
         <Image source={{ uri: poster || undefined }} style={styles.poster} />
         <View style={styles.headerInfo}>
-          <Text variant="headlineSmall" style={[styles.title, { color: theme.colors.onBackground }]}>{movie.title}</Text>
-          <Text variant="bodyMedium" style={[styles.originalTitle, { color: theme.colors.secondary }]}>{movie.original_title}</Text>
+          <Text variant="headlineSmall" style={[styles.title, { color: theme.colors.onBackground }]}>{media.title}</Text>
+          <Text variant="bodyMedium" style={[styles.originalTitle, { color: theme.colors.secondary }]}>{media.original_title}</Text>
           
           <View style={styles.badgesRow}>
             <View style={[styles.statusBadge, { backgroundColor: theme.colors.primary }]}>
-                <Text style={styles.statusText}>Lançado</Text>
+                <Text style={styles.statusText}>{media.status || 'Lançado'}</Text>
             </View>
-            <Text style={[styles.metaText, { color: theme.colors.onBackground }]}>📅 {getMediaYear(movie)}</Text>
-            <Text style={[styles.metaText, { color: theme.colors.onBackground }]}>🕒 {formatRuntime(movie.runtime)}</Text>
-            {movie.certification && (
-              <View style={[styles.certBadge, { backgroundColor: getCertificationColor(movie.certification) }]}>
-                <Text style={styles.certText}>{movie.certification}</Text>
+            <Text style={[styles.metaText, { color: theme.colors.onBackground }]}>📅 {getMediaYear(media)}</Text>
+            <Text style={[styles.metaText, { color: theme.colors.onBackground }]}>{isTv ? '📺' : '🕒'} {runtimeInfo}</Text>
+            {media.certification && (
+              <View style={[styles.certBadge, { backgroundColor: getCertificationColor(media.certification) }]}>
+                <Text style={styles.certText}>{media.certification}</Text>
               </View>
             )}
           </View>
 
-          {movie.tagline && <Text style={[styles.tagline, { color: theme.colors.onSurfaceVariant }]}>"{movie.tagline}"</Text>}
+          {media.tagline ? <Text style={[styles.tagline, { color: theme.colors.onSurfaceVariant }]}>"{media.tagline}"</Text> : null}
 
           <View style={styles.ratingRow}>
             <Icon name="star" size={20} color="#4285F4" />
-            <Text style={[styles.ratingScore, { color: '#4285F4' }]}> {Number(movie.rating_tmdb_average).toFixed(1)}</Text>
-            <Text style={[styles.ratingCount, { color: theme.colors.secondary }]}> ({movie.rating_tmdb_count})</Text>
+            <Text style={[styles.ratingScore, { color: '#4285F4' }]}> {Number(media.rating_tmdb_average).toFixed(1)}</Text>
+            <Text style={[styles.ratingCount, { color: theme.colors.secondary }]}> ({media.rating_tmdb_count || 0})</Text>
           </View>
 
           <Button

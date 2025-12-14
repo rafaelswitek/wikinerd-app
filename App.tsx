@@ -19,6 +19,7 @@ import PersonDetailsScreen from "./src/screens/PersonDetailsScreen";
 import SplashScreen from "./src/screens/SplashScreen";
 import ListsScreen from "./src/screens/ListsScreen";
 import ListDetailsScreen from "./src/screens/ListDetailsScreen";
+import TvShowDetailsScreen from "./src/screens/TvShowDetailsScreen";
 
 const { LightTheme, DarkTheme } = adaptNavigationTheme({
   reactNavigationLight: NavDefaultTheme,
@@ -27,7 +28,7 @@ const { LightTheme, DarkTheme } = adaptNavigationTheme({
 
 const paperColorsLight = {
   ...MD3LightTheme.colors,
-  primary: '#7c4dff', 
+  primary: '#7c4dff',
   onPrimary: '#ffffff',
   primaryContainer: '#e6e0ff',
   onPrimaryContainer: '#260058',
@@ -147,7 +148,6 @@ function AppStack({ theme }: { theme: any }) {
           headerTintColor: theme.colors.text
         }}
       />
-      {/* Adicione esta rota */}
       <Stack.Screen
         name="ListDetails"
         component={ListDetailsScreen}
@@ -156,6 +156,16 @@ function AppStack({ theme }: { theme: any }) {
           title: "Detalhes da Lista",
           headerStyle: { backgroundColor: theme.colors.card },
           headerTintColor: theme.colors.text
+        }}
+      />
+      <Stack.Screen
+        name="TvShowDetails"
+        component={TvShowDetailsScreen}
+        options={{
+          headerShown: true,
+          title: "",
+          headerTransparent: true,
+          headerTintColor: '#fff',
         }}
       />
     </Stack.Navigator>
