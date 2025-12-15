@@ -5,7 +5,7 @@ export interface UserInteraction {
   user_id: string;
   movie_id: string;
   watched_date: string | null;
-  status: 'watched' | 'want_to_watch' | null;
+  status: 'watched' | 'want_to_watch' | 'watching' | 'completed' | null;
   feedback: 'liked' | 'not_like' | 'favorite' | null;
   created_at: string;
   updated_at: string;

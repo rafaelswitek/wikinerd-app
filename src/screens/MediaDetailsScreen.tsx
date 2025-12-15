@@ -244,6 +244,7 @@ export default function MediaDetailsScreen({ route }: any) {
           onInteraction={handleInteraction}
           onAddList={() => setListModalVisible(true)}
           loading={interactionLoading}
+          isTv={isTv}
         />
 
         <View style={styles.genresContainer}>

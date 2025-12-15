@@ -8,9 +8,10 @@ interface Props {
   onInteraction: (field: 'status' | 'feedback', value: string) => void;
   onAddList: () => void;
   loading: boolean;
+  isTv: boolean;
 }
 
-export default function MediaActionButtons({ userInteraction, onInteraction, onAddList, loading }: Props) {
+export default function MediaActionButtons({ userInteraction, onInteraction, onAddList, loading, isTv }: Props) {
   const theme = useTheme();
 
   const getButtonProps = (isActive: boolean, activeColor: string) => ({
@@ -22,58 +23,76 @@ export default function MediaActionButtons({ userInteraction, onInteraction, onA
 
   return (
     <View style={styles.container}>
-      {/* Linha 1 */}
-      <View style={[styles.actionsBar, { marginTop: 16 }]}>
+      <View style={styles.actionsBar}>
         <Button
-          {...getButtonProps(userInteraction?.status === 'want_to_watch', theme.colors.primary)}
+          {...getButtonProps(userInteraction?.status === 'want_to_watch', '#2563eb')}
           icon={userInteraction?.status === 'want_to_watch' ? "bookmark" : "bookmark-outline"}
           onPress={() => onInteraction('status', 'want_to_watch')}
           loading={loading}
+          style={styles.flexBtn}
         >
-          Quero Ver
+          {userInteraction?.status === 'want_to_watch' ? 'Na Lista' : 'Quero Ver'}
         </Button>
-        <Button 
-          {...getButtonProps(userInteraction?.status === 'watched', '#0ea5e9')}
-          icon="check"
-          onPress={() => onInteraction('status', 'watched')}
+        <Button
+          {...getButtonProps(userInteraction?.status === (isTv ? 'watching' : 'watched'), '#ea580c')}
+          icon={userInteraction?.status === (isTv ? 'watching' : 'watched') ? "bookmark-check" : "bookmark-check-outline"}
+          onPress={() => onInteraction('status', (isTv ? 'watching' : 'watched'))}
+          style={styles.flexBtn}
         >
-          Assistido
+          {isTv
+            ? (userInteraction?.status === 'watching' ? 'Assistindo' : 'Tô Assistindo')
+            : (userInteraction?.status === 'watched' ? 'Assistido' : 'Já Vi')
+          }
         </Button>
       </View>
 
-      {/* Linha 2 */}
+      {isTv && (
+        <View style={[styles.actionsBar, { marginTop: 8 }]}>
+          <Button
+            {...getButtonProps(userInteraction?.status === 'completed', '#0ea5e9')}
+            icon={userInteraction?.status === 'completed' ? "bookmark-check" : "bookmark-check-outline"}
+            onPress={() => onInteraction('status', 'completed')}
+            style={styles.flexBtn}
+          >
+            {userInteraction?.status === 'completed' ? 'Finalizado' : 'Já terminei'}
+          </Button>
+
+          <Button
+            {...getButtonProps(userInteraction?.feedback === 'favorite', '#eab308')}
+            icon={userInteraction?.feedback === 'favorite' ? "star" : "star-outline"}
+            onPress={() => onInteraction('feedback', 'favorite')}
+            style={isTv ? styles.fullBtn : styles.flexBtn}
+          >
+            Favorito
+          </Button>
+        </View>
+      )}
+
       <View style={[styles.actionsBar, { marginTop: 8 }]}>
-        <Button 
+        <Button
           {...getButtonProps(userInteraction?.feedback === 'liked', '#22c55e')}
           icon="thumb-up"
           onPress={() => onInteraction('feedback', 'liked')}
+          style={styles.flexBtn}
         >
           Gostei
         </Button>
-        <Button 
+        <Button
           {...getButtonProps(userInteraction?.feedback === 'not_like', '#ef4444')}
           icon="thumb-down"
           onPress={() => onInteraction('feedback', 'not_like')}
+          style={styles.flexBtn}
         >
           Não Gostei
         </Button>
       </View>
 
-      {/* Linha 3 */}
       <View style={[styles.actionsBar, { marginTop: 8 }]}>
-        <Button 
-          {...getButtonProps(userInteraction?.feedback === 'favorite', '#eab308')}
-          icon={userInteraction?.feedback === 'favorite' ? "star" : "star-outline"}
-          onPress={() => onInteraction('feedback', 'favorite')}
-        >
-          Favorito
-        </Button>
-        
         <Button
           mode="outlined"
           icon="playlist-plus"
           textColor={theme.colors.onSurfaceVariant}
-          style={[styles.gridButton, { borderColor: theme.colors.outline }]}
+          style={[styles.flexBtn, { borderColor: theme.colors.outline }]}
           onPress={onAddList}
         >
           Add à Lista
@@ -84,7 +103,21 @@ export default function MediaActionButtons({ userInteraction, onInteraction, onA
 }
 
 const styles = StyleSheet.create({
-  container: {},
-  actionsBar: { flexDirection: 'row', paddingHorizontal: 16, gap: 10 },
+  container: {
+    paddingHorizontal: 16,
+    paddingBottom: 16,
+  },
+  actionsBar: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 8,
+  },
+  flexBtn: {
+    flex: 1,
+    marginHorizontal: 0,
+  },
+  fullBtn: {
+    flex: 1,
+  },
   gridButton: { flex: 1, borderRadius: 4 },
 });
