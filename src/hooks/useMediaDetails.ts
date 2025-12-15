@@ -16,9 +16,9 @@ export function useMediaDetails(slug: string, type: MediaType = 'movie') {
   const [images, setImages] = useState<MediaImage[]>([]);
   const [videos, setVideos] = useState<MediaVideo[]>([]);
   const [collectionData, setCollectionData] = useState<{ id: string; name: string; movies: Movie[] } | null>(null);
-  
+
   const [userInteraction, setUserInteraction] = useState<UserInteraction | null>(null);
-  
+
   const [loading, setLoading] = useState(true);
   const [interactionLoading, setInteractionLoading] = useState(false);
   const [seasonLoading, setSeasonLoading] = useState(false);
@@ -32,7 +32,7 @@ export function useMediaDetails(slug: string, type: MediaType = 'movie') {
   async function fetchData() {
     setLoading(true);
     setMedia(null);
-    
+
     try {
       const endpoint = type === 'tv' ? 'tv-shows' : 'movies';
       const response = await api.get(`https://api.wikinerd.com.br/api/${endpoint}/${slug}`);
@@ -59,12 +59,12 @@ export function useMediaDetails(slug: string, type: MediaType = 'movie') {
         fetchUserInteraction(data.id);
 
         if (type === 'movie' && data.collection?.id) {
-            try {
-              const collectionRes = await api.get(`https://api.wikinerd.com.br/api/collection/${data.collection.id}/movies`);
-              setCollectionData(collectionRes.data);
-            } catch (err) {
-              console.log("Erro coleção", err);
-            }
+          try {
+            const collectionRes = await api.get(`https://api.wikinerd.com.br/api/collection/${data.collection.id}/movies`);
+            setCollectionData(collectionRes.data);
+          } catch (err) {
+            console.log("Erro coleção", err);
+          }
         }
       }
     } catch (error) {
@@ -110,18 +110,32 @@ export function useMediaDetails(slug: string, type: MediaType = 'movie') {
 
     let newStatus = currentStatus;
     let newFeedback = currentFeedback;
+
     let watchedDate = userInteraction?.watched_date;
+    let finishedDate = (userInteraction as any)?.finished_date;
+
+    const today = new Date().toISOString().split('T')[0];
 
     if (field === 'status') {
       if (currentStatus === value) {
         newStatus = null;
-        watchedDate = null;
+        if (type === 'movie') watchedDate = null;
+        if (type === 'tv') finishedDate = null;
       } else {
         newStatus = value as any;
-        if (value === 'watched') {
-            if (!watchedDate) watchedDate = new Date().toISOString().split('T')[0];
-        } else {
+
+        if (type === 'movie') {
+          if (value === 'watched') {
+            if (!watchedDate) watchedDate = today;
+          } else {
             watchedDate = null;
+          }
+        } else if (type === 'tv') {
+          if (value === 'completed') {
+            if (!finishedDate) finishedDate = today;
+          } else {
+            finishedDate = null;
+          }
         }
       }
     } else if (field === 'feedback') {
@@ -129,8 +143,15 @@ export function useMediaDetails(slug: string, type: MediaType = 'movie') {
         newFeedback = null;
       } else {
         newFeedback = value as any;
-        newStatus = 'watched';
-        if (!watchedDate) watchedDate = new Date().toISOString().split('T')[0];
+
+        if (type === 'movie') {
+          newStatus = 'watched';
+          if (!watchedDate) watchedDate = today;
+        } else {
+          if (newStatus !== 'completed') {
+            newStatus = 'watching';
+          }
+        }
       }
     }
 
@@ -139,12 +160,18 @@ export function useMediaDetails(slug: string, type: MediaType = 'movie') {
         await api.delete(`/users/${endpoint}/${userInteraction.id}`);
         setUserInteraction(null);
       } else {
-        const payload = {
+        const payload: any = {
           [idField]: media.id,
           status: newStatus,
           feedback: newFeedback,
-          watched_date: watchedDate
         };
+
+        if (type === 'movie') {
+          payload.watched_date = watchedDate;
+        } else {
+          payload.finished_date = finishedDate;
+        }
+
         const response = await api.put(`/users/${endpoint}`, payload);
         setUserInteraction(response.data);
       }
@@ -159,12 +186,12 @@ export function useMediaDetails(slug: string, type: MediaType = 'movie') {
     if (type !== 'tv') return;
     setSeasonLoading(true);
     try {
-        await api.post(`/users/tv-show/season/${seasonId}/watched`);
-        await refreshSeasons();
+      await api.post(`/users/tv-show/season/${seasonId}/watched`);
+      await refreshSeasons();
     } catch (error) {
-        Alert.alert("Erro", "Falha ao marcar temporada.");
+      Alert.alert("Erro", "Falha ao marcar temporada.");
     } finally {
-        setSeasonLoading(false);
+      setSeasonLoading(false);
     }
   };
 
@@ -172,26 +199,26 @@ export function useMediaDetails(slug: string, type: MediaType = 'movie') {
     if (type !== 'tv') return;
     setSeasonLoading(true);
     try {
-        await api.delete(`/users/tv-show/season/${seasonId}/watched`);
-        await refreshSeasons();
+      await api.delete(`/users/tv-show/season/${seasonId}/watched`);
+      await refreshSeasons();
     } catch (error) {
-        Alert.alert("Erro", "Falha ao desmarcar temporada.");
+      Alert.alert("Erro", "Falha ao desmarcar temporada.");
     } finally {
-        setSeasonLoading(false);
+      setSeasonLoading(false);
     }
   };
 
   const toggleEpisodeWatched = async (episodeId: string, isWatched: boolean) => {
     if (type !== 'tv') return;
     try {
-        if (isWatched) {
-            await api.delete(`/users/tv-show/episode/${episodeId}/watched`);
-        } else {
-            await api.post(`/users/tv-show/episode/${episodeId}/watched`);
-        }
-        await refreshSeasons();
+      if (isWatched) {
+        await api.delete(`/users/tv-show/episode/${episodeId}/watched`);
+      } else {
+        await api.post(`/users/tv-show/episode/${episodeId}/watched`);
+      }
+      await refreshSeasons();
     } catch (error) {
-        console.error("Erro ao alternar episódio:", error);
+      console.error("Erro ao alternar episódio:", error);
     }
   };
 
