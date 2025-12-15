@@ -1,15 +1,18 @@
 import { useState, useEffect, useMemo } from "react";
 import { Alert } from "react-native";
 import { api } from "../services/api";
-import { Movie, CastMember, CrewMember, Provider, Collection } from "../types/Movie";
+import { Movie } from "../types/Movie";
+import { TvShow } from "../types/TvShow";
 import { UserInteraction, MediaImage, MediaVideo } from "../types/Interactions";
 import { getRatings } from "../utils/helpers";
 
-export function useMediaDetails(slug: string) {
-  const [movie, setMovie] = useState<Movie | null>(null);
-  const [providers, setProviders] = useState<Provider[]>([]);
-  const [cast, setCast] = useState<CastMember[]>([]);
-  const [crew, setCrew] = useState<CrewMember[]>([]);
+type MediaType = 'movie' | 'tv';
+
+export function useMediaDetails(slug: string, type: MediaType = 'movie') {
+  const [media, setMedia] = useState<Movie | TvShow | null>(null);
+  const [providers, setProviders] = useState<any[]>([]);
+  const [cast, setCast] = useState<any[]>([]);
+  const [crew, setCrew] = useState<any[]>([]);
   const [images, setImages] = useState<MediaImage[]>([]);
   const [videos, setVideos] = useState<MediaVideo[]>([]);
   const [collectionData, setCollectionData] = useState<{ id: string; name: string; movies: Movie[] } | null>(null);
@@ -18,68 +21,89 @@ export function useMediaDetails(slug: string) {
   
   const [loading, setLoading] = useState(true);
   const [interactionLoading, setInteractionLoading] = useState(false);
+  const [seasonLoading, setSeasonLoading] = useState(false);
 
-  const { normalizedRatings, average } = useMemo(() => getRatings(movie, 'movie'), [movie]);
+  const { normalizedRatings, average } = useMemo(() => getRatings(media, type === 'tv' ? 'tv-show' : 'movie'), [media, type]);
 
   useEffect(() => {
-    async function fetchData() {
-      setLoading(true);
-      setMovie(null);
-      
-      try {
-        const movieRes = await api.get(`https://api.wikinerd.com.br/api/movies/${slug}`);
-        const movieData = movieRes.data;
-        setMovie(movieData);
+    fetchData();
+  }, [slug, type]);
 
-        if (movieData.id) {
-          const [providerRes, castRes, crewRes, imagesRes, videosRes] = await Promise.all([
-            api.get(`https://api.wikinerd.com.br/api/movies/${movieData.id}/providers`),
-            api.get(`https://api.wikinerd.com.br/api/movies/${movieData.id}/cast`),
-            api.get(`https://api.wikinerd.com.br/api/movies/${movieData.id}/crew`),
-            api.get(`https://api.wikinerd.com.br/api/movies/${movieData.id}/images`),
-            api.get(`https://api.wikinerd.com.br/api/movies/${movieData.id}/videos`),
-          ]);
+  async function fetchData() {
+    setLoading(true);
+    setMedia(null);
+    
+    try {
+      const endpoint = type === 'tv' ? 'tv-shows' : 'movies';
+      const response = await api.get(`https://api.wikinerd.com.br/api/${endpoint}/${slug}`);
+      const data = response.data;
+      setMedia(data);
 
-          setProviders(providerRes.data);
-          setCast(castRes.data);
-          setCrew(crewRes.data);
-          setImages(imagesRes.data);
-          setVideos(videosRes.data);
+      if (data.id) {
+        const promises = [
+          api.get(`https://api.wikinerd.com.br/api/${endpoint}/${data.id}/providers`).catch(() => ({ data: [] })),
+          api.get(`https://api.wikinerd.com.br/api/${endpoint}/${data.id}/cast`).catch(() => ({ data: [] })),
+          api.get(`https://api.wikinerd.com.br/api/${endpoint}/${data.id}/crew`).catch(() => ({ data: [] })),
+          api.get(`https://api.wikinerd.com.br/api/${endpoint}/${data.id}/images`).catch(() => ({ data: [] })),
+          api.get(`https://api.wikinerd.com.br/api/${endpoint}/${data.id}/videos`).catch(() => ({ data: [] })),
+        ];
 
-          fetchUserInteraction(movieData.id);
+        const [providerRes, castRes, crewRes, imagesRes, videosRes] = await Promise.all(promises);
 
-          if (movieData.collection?.id) {
+        setProviders(providerRes.data);
+        setCast(castRes.data);
+        setCrew(crewRes.data);
+        setImages(imagesRes.data);
+        setVideos(videosRes.data);
+
+        fetchUserInteraction(data.id);
+
+        if (type === 'movie' && data.collection?.id) {
             try {
-              const collectionRes = await api.get(`https://api.wikinerd.com.br/api/collection/${movieData.collection.id}/movies`);
+              const collectionRes = await api.get(`https://api.wikinerd.com.br/api/collection/${data.collection.id}/movies`);
               setCollectionData(collectionRes.data);
             } catch (err) {
-              console.error("Erro ao carregar coleção:", err);
+              console.log("Erro coleção", err);
             }
-          }
         }
-      } catch (error) {
-        console.error("Erro ao carregar dados:", error);
-      } finally {
-        setLoading(false);
       }
+    } catch (error) {
+      console.error(`Erro ao carregar ${type}:`, error);
+    } finally {
+      setLoading(false);
     }
-    fetchData();
-  }, [slug]);
+  }
 
-  async function fetchUserInteraction(movieId: string) {
+  async function refreshSeasons() {
+    if (!media?.id || type !== 'tv') return;
     try {
-      const response = await api.get(`/users/movie/${movieId}`);
+      const response = await api.get(`https://api.wikinerd.com.br/api/tv-shows/${slug}`);
+      if (response.data.seasons) {
+        setMedia(prev => prev ? ({ ...prev, seasons: response.data.seasons }) : null);
+      }
+    } catch (error) {
+      console.log("Erro ao atualizar temporadas", error);
+    }
+  }
+
+  async function fetchUserInteraction(id: string) {
+    try {
+      const endpoint = type === 'tv' ? 'tv-show' : 'movie';
+      const response = await api.get(`/users/${endpoint}/${id}`);
       setUserInteraction(response.data);
     } catch (error: any) {
       if (error.response?.status !== 404) {
-        console.log("Erro ao buscar status do usuário:", error);
+        console.log("Erro status user:", error);
       }
     }
   }
 
   const handleInteraction = async (field: 'status' | 'feedback', value: string) => {
-    if (!movie) return;
+    if (!media) return;
     setInteractionLoading(true);
+
+    const endpoint = type === 'tv' ? 'tv-show' : 'movie';
+    const idField = type === 'tv' ? 'tv_show_id' : 'movie_id';
 
     const currentStatus = userInteraction?.status;
     const currentFeedback = userInteraction?.feedback;
@@ -95,11 +119,9 @@ export function useMediaDetails(slug: string) {
       } else {
         newStatus = value as any;
         if (value === 'watched') {
-          if (!watchedDate) {
-            watchedDate = new Date().toISOString().split('T')[0];
-          }
+            if (!watchedDate) watchedDate = new Date().toISOString().split('T')[0];
         } else {
-          watchedDate = null;
+            watchedDate = null;
         }
       }
     } else if (field === 'feedback') {
@@ -107,38 +129,74 @@ export function useMediaDetails(slug: string) {
         newFeedback = null;
       } else {
         newFeedback = value as any;
-        // REGRA: Ao marcar feedback, define automaticamente como assistido
         newStatus = 'watched';
-        if (!watchedDate) {
-            watchedDate = new Date().toISOString().split('T')[0];
-        }
+        if (!watchedDate) watchedDate = new Date().toISOString().split('T')[0];
       }
     }
 
     try {
       if (!newStatus && !newFeedback && userInteraction?.id) {
-        await api.delete(`/users/movie/${userInteraction.id}`);
+        await api.delete(`/users/${endpoint}/${userInteraction.id}`);
         setUserInteraction(null);
       } else {
         const payload = {
-          movie_id: movie.id,
+          [idField]: media.id,
           status: newStatus,
           feedback: newFeedback,
           watched_date: watchedDate
         };
-        const response = await api.put('/users/movie', payload);
+        const response = await api.put(`/users/${endpoint}`, payload);
         setUserInteraction(response.data);
       }
     } catch (error) {
-      console.error("Erro ao atualizar interação:", error);
       Alert.alert("Erro", "Não foi possível atualizar sua interação.");
     } finally {
       setInteractionLoading(false);
     }
   };
 
+  const markSeasonWatched = async (seasonId: string) => {
+    if (type !== 'tv') return;
+    setSeasonLoading(true);
+    try {
+        await api.post(`/users/tv-show/season/${seasonId}/watched`);
+        await refreshSeasons();
+    } catch (error) {
+        Alert.alert("Erro", "Falha ao marcar temporada.");
+    } finally {
+        setSeasonLoading(false);
+    }
+  };
+
+  const unmarkSeasonWatched = async (seasonId: string) => {
+    if (type !== 'tv') return;
+    setSeasonLoading(true);
+    try {
+        await api.delete(`/users/tv-show/season/${seasonId}/watched`);
+        await refreshSeasons();
+    } catch (error) {
+        Alert.alert("Erro", "Falha ao desmarcar temporada.");
+    } finally {
+        setSeasonLoading(false);
+    }
+  };
+
+  const toggleEpisodeWatched = async (episodeId: string, isWatched: boolean) => {
+    if (type !== 'tv') return;
+    try {
+        if (isWatched) {
+            await api.delete(`/users/tv-show/episode/${episodeId}/watched`);
+        } else {
+            await api.post(`/users/tv-show/episode/${episodeId}/watched`);
+        }
+        await refreshSeasons();
+    } catch (error) {
+        console.error("Erro ao alternar episódio:", error);
+    }
+  };
+
   return {
-    movie,
+    media,
     providers,
     cast,
     crew,
@@ -148,8 +206,12 @@ export function useMediaDetails(slug: string) {
     userInteraction,
     loading,
     interactionLoading,
+    seasonLoading,
     normalizedRatings,
     average,
-    handleInteraction
+    handleInteraction,
+    markSeasonWatched,
+    unmarkSeasonWatched,
+    toggleEpisodeWatched
   };
 }

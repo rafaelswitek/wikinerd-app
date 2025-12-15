@@ -16,7 +16,7 @@ interface Props {
 export default function MediaCard({ media, style }: Props) {
   const navigation = useNavigation<any>();
   const theme = useTheme();
-
+  
   const poster = media.poster_path?.tmdb
     ? "https://image.tmdb.org/t/p/w342" + media.poster_path.tmdb
     : "https://via.placeholder.com/140x210?text=No+Image";
@@ -25,15 +25,19 @@ export default function MediaCard({ media, style }: Props) {
 
   const handlePress = () => {
     if (!media.slug) return;
-    if ('number_of_seasons' in media) {
-      navigation.push("TvShowDetails", { slug: media.slug });
-    } else {
-      navigation.push("MediaDetails", { slug: media.slug });
-    }
+
+    // Identifica se é série verificando uma propriedade exclusiva de TvShow
+    // Você pode usar 'number_of_seasons' ou checar se existe 'first_air_date' se preferir
+    const isTv = 'number_of_seasons' in media;
+    
+    navigation.push("MediaDetails", { 
+      slug: media.slug,
+      type: isTv ? 'tv' : 'movie' 
+    });
   };
 
   return (
-    <TouchableOpacity
+    <TouchableOpacity 
       style={[{ marginRight: 12, width: 140, paddingBottom: 8 }, style]}
       onPress={handlePress}
       activeOpacity={0.7}
@@ -67,16 +71,16 @@ export default function MediaCard({ media, style }: Props) {
           borderRadius: 8,
           backgroundColor: theme.colors.surfaceVariant,
         }}
-        resizeMode="cover"
+        resizeMode="cover" 
       />
-      <Text
-        variant="bodySmall"
-        numberOfLines={2}
+      <Text 
+        variant="bodySmall" 
+        numberOfLines={2} 
         style={{ marginTop: 6, fontWeight: '600', color: theme.colors.onSurface }}
       >
         {media.title}
       </Text>
-
+      
       <View style={{ flexDirection: "row", alignItems: "center", marginTop: 2 }}>
         {year && (
           <Text variant="bodySmall" style={{ color: theme.colors.secondary, marginRight: 6 }}>

@@ -19,7 +19,6 @@ import PersonDetailsScreen from "./src/screens/PersonDetailsScreen";
 import SplashScreen from "./src/screens/SplashScreen";
 import ListsScreen from "./src/screens/ListsScreen";
 import ListDetailsScreen from "./src/screens/ListDetailsScreen";
-import TvShowDetailsScreen from "./src/screens/TvShowDetailsScreen";
 
 const { LightTheme, DarkTheme } = adaptNavigationTheme({
   reactNavigationLight: NavDefaultTheme,
@@ -156,16 +155,6 @@ function AppStack({ theme }: { theme: any }) {
           title: "Detalhes da Lista",
           headerStyle: { backgroundColor: theme.colors.card },
           headerTintColor: theme.colors.text
-        }}
-      />
-      <Stack.Screen
-        name="TvShowDetails"
-        component={TvShowDetailsScreen}
-        options={{
-          headerShown: true,
-          title: "",
-          headerTransparent: true,
-          headerTintColor: '#fff',
         }}
       />
     </Stack.Navigator>
