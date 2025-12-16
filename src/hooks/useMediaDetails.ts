@@ -98,7 +98,7 @@ export function useMediaDetails(slug: string, type: MediaType = 'movie') {
     }
   }
 
-  const handleInteraction = async (field: 'status' | 'feedback', value: string) => {
+  const handleInteraction = async (field: 'status' | 'feedback', value: string | null) => {
     if (!media) return;
     setInteractionLoading(true);
 
@@ -117,8 +117,10 @@ export function useMediaDetails(slug: string, type: MediaType = 'movie') {
     const today = new Date().toISOString().split('T')[0];
 
     if (field === 'status') {
-      if (currentStatus === value) {
+      if (value === null || currentStatus === value) {
         newStatus = null;
+        newFeedback = null;
+        
         if (type === 'movie') watchedDate = null;
         if (type === 'tv') finishedDate = null;
       } else {
@@ -139,7 +141,7 @@ export function useMediaDetails(slug: string, type: MediaType = 'movie') {
         }
       }
     } else if (field === 'feedback') {
-      if (currentFeedback === value) {
+      if (value === null || currentFeedback === value) {
         newFeedback = null;
       } else {
         newFeedback = value as any;

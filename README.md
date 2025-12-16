@@ -1,6 +1,8 @@
 # Coisas a serem feitas
 
-* implementar as telas de series
-* implementar tela de series/episodios para assistir
+* corrigir adicioar serie na lista
+* corrigir marcar episodios como assistido
+
+* implementar tela de detalhe do episodio
 * implementar calculadora de streaming
 * implementar login/cadastro com google

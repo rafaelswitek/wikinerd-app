@@ -5,7 +5,7 @@ import { UserInteraction } from "../types/Interactions";
 
 interface Props {
   userInteraction: UserInteraction | null;
-  onInteraction: (field: 'status' | 'feedback', value: string) => void;
+  onInteraction: (field: 'status' | 'feedback', value: string | null) => void;
   onAddList: () => void;
   loading: boolean;
   isTv: boolean;
@@ -21,13 +21,29 @@ export default function MediaActionButtons({ userInteraction, onInteraction, onA
     style: [styles.gridButton, !isActive && { borderColor: theme.colors.outline }]
   });
 
+  const handleStatusChange = (status: string) => {
+    if (userInteraction?.status === status) {
+      onInteraction('status', null);
+    } else {
+      onInteraction('status', status);
+    }
+  };
+
+  const handleFeedbackChange = (feedback: string) => {
+    if (userInteraction?.feedback === feedback) {
+      onInteraction('feedback', null);
+    } else {
+      onInteraction('feedback', feedback);
+    }
+  };
+
   return (
     <View style={styles.container}>
       <View style={styles.actionsBar}>
         <Button
           {...getButtonProps(userInteraction?.status === 'want_to_watch', '#2563eb')}
           icon={userInteraction?.status === 'want_to_watch' ? "bookmark" : "bookmark-outline"}
-          onPress={() => onInteraction('status', 'want_to_watch')}
+          onPress={() => handleStatusChange('want_to_watch')}
           loading={loading}
           style={styles.flexBtn}
         >
@@ -36,7 +52,7 @@ export default function MediaActionButtons({ userInteraction, onInteraction, onA
         <Button
           {...getButtonProps(userInteraction?.status === (isTv ? 'watching' : 'watched'), '#ea580c')}
           icon={userInteraction?.status === (isTv ? 'watching' : 'watched') ? "bookmark-check" : "bookmark-check-outline"}
-          onPress={() => onInteraction('status', (isTv ? 'watching' : 'watched'))}
+          onPress={() => handleStatusChange(isTv ? 'watching' : 'watched')}
           style={styles.flexBtn}
         >
           {isTv
@@ -51,7 +67,7 @@ export default function MediaActionButtons({ userInteraction, onInteraction, onA
           <Button
             {...getButtonProps(userInteraction?.status === 'completed', '#0ea5e9')}
             icon={userInteraction?.status === 'completed' ? "bookmark-check" : "bookmark-check-outline"}
-            onPress={() => onInteraction('status', 'completed')}
+            onPress={() => handleStatusChange('completed')}
             style={styles.flexBtn}
           >
             {userInteraction?.status === 'completed' ? 'Finalizado' : 'Já terminei'}
@@ -60,7 +76,7 @@ export default function MediaActionButtons({ userInteraction, onInteraction, onA
           <Button
             {...getButtonProps(userInteraction?.feedback === 'favorite', '#eab308')}
             icon={userInteraction?.feedback === 'favorite' ? "star" : "star-outline"}
-            onPress={() => onInteraction('feedback', 'favorite')}
+            onPress={() => handleFeedbackChange('favorite')}
             style={isTv ? styles.fullBtn : styles.flexBtn}
           >
             Favorito
@@ -72,7 +88,7 @@ export default function MediaActionButtons({ userInteraction, onInteraction, onA
         <Button
           {...getButtonProps(userInteraction?.feedback === 'liked', '#22c55e')}
           icon="thumb-up"
-          onPress={() => onInteraction('feedback', 'liked')}
+          onPress={() => handleFeedbackChange('liked')}
           style={styles.flexBtn}
         >
           Gostei
@@ -80,7 +96,7 @@ export default function MediaActionButtons({ userInteraction, onInteraction, onA
         <Button
           {...getButtonProps(userInteraction?.feedback === 'not_like', '#ef4444')}
           icon="thumb-down"
-          onPress={() => onInteraction('feedback', 'not_like')}
+          onPress={() => handleFeedbackChange('not_like')}
           style={styles.flexBtn}
         >
           Não Gostei
