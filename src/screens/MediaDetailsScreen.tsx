@@ -563,7 +563,7 @@ export default function MediaDetailsScreen({ route }: any) {
         </View>
       </Modal>
 
-      {media && <AddToListModal visible={listModalVisible} onDismiss={() => setListModalVisible(false)} mediaId={media.id} mediaType={isTv ? "tv" : "movie"} mediaTitle={media.title} />}
+      {media && <AddToListModal visible={listModalVisible} onDismiss={() => setListModalVisible(false)} mediaId={media.id} mediaType={isTv ? "tv_show" : "movie"} mediaTitle={media.title} />}
       {media && <WriteReviewModal visible={writeModalVisible} onDismiss={() => setWriteModalVisible(false)} onSubmitSuccess={handleReviewSuccess} movieId={media.id} movieTitle={media.title} />}
       {media && justCreatedReview && <ShareReviewModal visible={shareModalVisible} onDismiss={() => setShareModalVisible(false)} movie={media as any} review={justCreatedReview} />}
     </>
