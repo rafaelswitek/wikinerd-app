@@ -1,4 +1,6 @@
 import { Country, Language, Company, Genre, Keyword } from "./Movie";
+import { CastMember, CrewMember } from "./Person"; 
+import { MediaImage, MediaVideo } from "./Interactions";
 
 export interface Creator {
   id: string;
@@ -18,7 +20,7 @@ export interface Episode {
   still_path: { tmdb: string | null };
   rating_tmdb_average: string;
   watched_date?: string | null;
-  user_feedback?: 'liked' | 'not_like' | 'report' | null;
+  user_feedback?: 'liked' | 'not_like' | 'favorite' | null;
 }
 
 export interface Season {
@@ -61,4 +63,29 @@ export interface TvShow {
   creators: Creator[];
   seasons: Season[];
   external_ids: { platform: string; external_id: string }[];
+}
+
+export interface EpisodeDetails extends Episode {
+  cast: any[]; // ou CastMember[] se tiver o tipo Person definido
+  crew: any[]; // ou CrewMember[]
+  images: MediaImage[];
+  videos: MediaVideo[];
+  tv_show: {
+    id: string;
+    slug: string;
+    title: string;
+    poster_path: { tmdb: string | null };
+    backdrop_path: { tmdb: string | null };
+  };
+  season: {
+    id: string;
+    title: string;
+    poster_path: { tmdb: string | null };
+  };
+}
+
+export interface EpisodeDetailsResponse {
+  episode: EpisodeDetails;
+  previous: Episode | null;
+  next: Episode | null;
 }

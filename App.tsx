@@ -19,6 +19,7 @@ import PersonDetailsScreen from "./src/screens/PersonDetailsScreen";
 import SplashScreen from "./src/screens/SplashScreen";
 import ListsScreen from "./src/screens/ListsScreen";
 import ListDetailsScreen from "./src/screens/ListDetailsScreen";
+import EpisodeDetailsScreen from "./src/screens/EpisodeDetailsScreen";
 
 const { LightTheme, DarkTheme } = adaptNavigationTheme({
   reactNavigationLight: NavDefaultTheme,
@@ -155,6 +156,14 @@ function AppStack({ theme }: { theme: any }) {
           title: "Detalhes da Lista",
           headerStyle: { backgroundColor: theme.colors.card },
           headerTintColor: theme.colors.text
+        }}
+      />
+      <Stack.Screen
+        name="EpisodeDetails"
+        component={EpisodeDetailsScreen}
+        options={{
+          headerShown: false,
+          animation: 'slide_from_right'
         }}
       />
     </Stack.Navigator>
