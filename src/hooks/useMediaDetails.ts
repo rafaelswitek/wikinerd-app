@@ -188,7 +188,10 @@ export function useMediaDetails(slug: string, type: MediaType = 'movie') {
     if (type !== 'tv') return;
     setSeasonLoading(true);
     try {
-      await api.post(`/users/tv-show/season/${seasonId}/watched`);
+      const today = new Date().toISOString().split('T')[0];
+      await api.put(`/users/season/${seasonId}`, {
+        watched_date: today
+      });
       await refreshSeasons();
     } catch (error) {
       Alert.alert("Erro", "Falha ao marcar temporada.");
@@ -201,7 +204,7 @@ export function useMediaDetails(slug: string, type: MediaType = 'movie') {
     if (type !== 'tv') return;
     setSeasonLoading(true);
     try {
-      await api.delete(`/users/tv-show/season/${seasonId}/watched`);
+      await api.delete(`/users/season/${seasonId}`);
       await refreshSeasons();
     } catch (error) {
       Alert.alert("Erro", "Falha ao desmarcar temporada.");
@@ -214,9 +217,13 @@ export function useMediaDetails(slug: string, type: MediaType = 'movie') {
     if (type !== 'tv') return;
     try {
       if (isWatched) {
-        await api.delete(`/users/tv-show/episode/${episodeId}/watched`);
+        await api.delete(`/users/episode/${episodeId}`);
       } else {
-        await api.post(`/users/tv-show/episode/${episodeId}/watched`);
+        const today = new Date().toISOString().split('T')[0];
+        await api.put(`/users/episode`, {
+          episode_id: episodeId,
+          watched_date: today
+        });
       }
       await refreshSeasons();
     } catch (error) {
