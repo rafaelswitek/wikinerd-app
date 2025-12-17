@@ -32,7 +32,7 @@ export default function MediaDetailsScreen({ route }: any) {
   const {
     media, providers, cast, crew, images, videos, collectionData,
     userInteraction, loading, interactionLoading, seasonLoading, normalizedRatings, average,
-    handleInteraction, markSeasonWatched, unmarkSeasonWatched, toggleEpisodeWatched
+    handleInteraction, markSeasonWatched, unmarkSeasonWatched, toggleEpisodeWatched, rateEpisode
   } = useMediaDetails(slug, type);
 
   const [activeTab, setActiveTab] = useState("about");
@@ -437,7 +437,12 @@ export default function MediaDetailsScreen({ route }: any) {
                   visible={showSeasonMenu}
                   onDismiss={() => setShowSeasonMenu(false)}
                   anchor={
-                    <Button mode="outlined" onPress={() => setShowSeasonMenu(true)} icon="chevron-down" contentStyle={{ flexDirection: 'row-reverse' }}>
+                    <Button 
+                        mode="outlined" 
+                        onPress={() => setShowSeasonMenu(true)} 
+                        icon="chevron-down" 
+                        contentStyle={{ flexDirection: 'row-reverse' }}
+                    >
                       {currentSeason ? currentSeason.title : "Selecionar Temporada"}
                     </Button>
                   }
@@ -445,11 +450,9 @@ export default function MediaDetailsScreen({ route }: any) {
                   {sortedSeasons.map((season: any) => (
                     <Menu.Item
                       key={season.id}
-                      onPress={() => {
-                        setShowSeasonMenu(false);
-                        setTimeout(() => {
-                          setSelectedSeasonNumber(season.season_number);
-                        }, 250);
+                      onPress={() => { 
+                        setShowSeasonMenu(false); 
+                        setTimeout(() => setSelectedSeasonNumber(season.season_number), 250);
                       }}
                       title={season.title}
                     />
@@ -476,6 +479,7 @@ export default function MediaDetailsScreen({ route }: any) {
                     episode={episode}
                     serieSlug={slug}
                     onToggleWatched={toggleEpisodeWatched}
+                    onRate={rateEpisode}
                   />
                 ))
               ) : (
@@ -568,7 +572,7 @@ export default function MediaDetailsScreen({ route }: any) {
         </View>
       </Modal>
 
-      {media && <AddToListModal visible={listModalVisible} onDismiss={() => setListModalVisible(false)} mediaId={media.id} mediaType={isTv ? "tv_show" : "movie"} mediaTitle={media.title} />}
+      {media && <AddToListModal visible={listModalVisible} onDismiss={() => setListModalVisible(false)} mediaId={media.id} mediaType={isTv ? "tv" : "movie"} mediaTitle={media.title} />}
       {media && <WriteReviewModal visible={writeModalVisible} onDismiss={() => setWriteModalVisible(false)} onSubmitSuccess={handleReviewSuccess} movieId={media.id} movieTitle={media.title} />}
       {media && justCreatedReview && <ShareReviewModal visible={shareModalVisible} onDismiss={() => setShareModalVisible(false)} movie={media as any} review={justCreatedReview} />}
     </>

@@ -231,6 +231,22 @@ export function useMediaDetails(slug: string, type: MediaType = 'movie') {
     }
   };
 
+  const rateEpisode = async (episodeId: string, feedback: "liked" | "not_like" | "favorite" | null) => {
+    if (type !== 'tv') return;
+    try {
+      const today = new Date().toISOString().split('T')[0];
+      await api.put(`/users/episode`, {
+        episode_id: episodeId,
+        watched_date: today,
+        feedback: feedback
+      });
+      await refreshSeasons();
+    } catch (error) {
+      console.error("Erro ao avaliar episódio:", error);
+      Alert.alert("Erro", "Não foi possível enviar sua avaliação.");
+    }
+  };
+
   return {
     media,
     providers,
@@ -248,6 +264,7 @@ export function useMediaDetails(slug: string, type: MediaType = 'movie') {
     handleInteraction,
     markSeasonWatched,
     unmarkSeasonWatched,
-    toggleEpisodeWatched
+    toggleEpisodeWatched,
+    rateEpisode
   };
 }
