@@ -445,7 +445,12 @@ export default function MediaDetailsScreen({ route }: any) {
                   {sortedSeasons.map((season: any) => (
                     <Menu.Item
                       key={season.id}
-                      onPress={() => { setSelectedSeasonNumber(season.season_number); setShowSeasonMenu(false); }}
+                      onPress={() => {
+                        setShowSeasonMenu(false);
+                        setTimeout(() => {
+                          setSelectedSeasonNumber(season.season_number);
+                        }, 250);
+                      }}
                       title={season.title}
                     />
                   ))}

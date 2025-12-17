@@ -40,6 +40,7 @@ export interface TvShow {
   original_title: string;
   poster_path: { tmdb: string | null };
   backdrop_path: { tmdb: string | null };
+  adult_content: boolean;
   overview: string;
   number_of_seasons: number;
   number_of_episodes: number;
