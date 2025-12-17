@@ -1,45 +1,61 @@
 import React, { useState } from "react";
-import { View, Image, TouchableOpacity, StyleSheet } from "react-native";
-import { Text, useTheme, IconButton, Menu, Divider } from "react-native-paper";
+import { View, Image, StyleSheet, TouchableOpacity } from "react-native";
+import { Text, useTheme, IconButton, Menu, Divider, ActivityIndicator } from "react-native-paper";
 import { Episode } from "../types/TvShow";
 import { formatDate } from "../utils/helpers";
 
 interface Props {
   episode: Episode;
-  onToggleWatched: (id: string, isWatched: boolean) => void;
-  onRate: (id: string, feedback: "liked" | "not_like" | "favorite" | null) => void;
+  onToggleWatched: (id: string, isWatched: boolean) => Promise<void>;
+  onRate: (id: string, feedback: "liked" | "not_like" | "favorite" | null) => Promise<void>;
   serieSlug: string;
 }
 
 export default function EpisodeItem({ episode, onToggleWatched, onRate, serieSlug }: Props) {
   const theme = useTheme();
   const [menuVisible, setMenuVisible] = useState(false);
-  const isWatched = !!episode.watched_date;
   
-  // Recupera o feedback injetado pelo hook (se existir)
-  const feedback = (episode as any).feedback; 
+  const [isWatchLoading, setIsWatchLoading] = useState(false);
+  const [isRateLoading, setIsRateLoading] = useState(false);
+
+  const isWatched = !!episode.watched_date;
+  const feedback = episode.user_feedback as "liked" | "not_like" | "favorite" | null;
 
   const getFeedbackIcon = () => {
     switch(feedback) {
       case 'liked': return 'thumb-up';
       case 'not_like': return 'thumb-down';
-      case 'favorite': return 'heart';
+      case 'favorite': return 'star';
       default: return 'star-outline';
     }
   };
 
   const getFeedbackColor = () => {
     switch(feedback) {
-      case 'liked': return theme.colors.primary;
-      case 'not_like': return theme.colors.error;
-      case 'favorite': return '#E91E63';
+      case 'liked': return '#22c55e';
+      case 'not_like': return '#ef4444';
+      case 'favorite': return '#eab308';
       default: return theme.colors.onSurfaceVariant;
     }
   };
 
-  const handleRate = (value: "liked" | "not_like" | "favorite" | null) => {
-    setMenuVisible(false);
-    onRate(episode.id, value);
+  const handleToggleWatched = async () => {
+    try {
+      setIsWatchLoading(true);
+      await onToggleWatched(episode.id, isWatched);
+    } finally {
+      setIsWatchLoading(false);
+    }
+  };
+
+  const handleRate = async (value: "liked" | "not_like" | "favorite" | null) => {
+    setMenuVisible(false); // Fecha o menu imediatamente
+    try {
+      setIsRateLoading(true);
+      await onRate(episode.id, value);
+    } finally {
+      setIsRateLoading(false);
+    }
   };
 
   return (
@@ -66,54 +82,68 @@ export default function EpisodeItem({ episode, onToggleWatched, onRate, serieSlu
             {episode.title}
         </Text>
         
-        <Text style={[styles.overview, { color: theme.colors.onSurfaceVariant }]} numberOfLines={3}>
+        <Text style={[styles.overview, { color: theme.colors.onSurfaceVariant }]} numberOfLines={2}>
             {episode.overview || "Sem descrição."}
         </Text>
       </View>
 
-      <View style={[styles.actionsContainer, { borderColor: theme.colors.outline }]}>
-        <TouchableOpacity 
-          style={[styles.actionButton, { borderBottomWidth: 1, borderColor: theme.colors.outlineVariant }]}
-          onPress={() => onToggleWatched(episode.id, isWatched)}
-          activeOpacity={0.7}
-        >
-          <IconButton 
-              icon={isWatched ? "eye-check" : "eye-outline"} 
-              iconColor={isWatched ? theme.colors.primary : theme.colors.onSurfaceVariant}
-              size={24}
-              style={{ margin: 0 }}
-          />
-        </TouchableOpacity>
-
-        <Menu
-            visible={menuVisible}
-            onDismiss={() => setMenuVisible(false)}
-            anchorPosition="bottom"
-            anchor={
-                <TouchableOpacity 
-                    style={styles.actionButton}
-                    onPress={() => setMenuVisible(true)}
-                    activeOpacity={0.7}
-                >
-                    <IconButton 
-                        icon={getFeedbackIcon()} 
-                        iconColor={getFeedbackColor()}
-                        size={24}
-                        style={{ margin: 0 }}
-                    />
-                </TouchableOpacity>
-            }
-        >
-            <Menu.Item onPress={() => handleRate("liked")} title="Gostei" leadingIcon="thumb-up" />
-            <Menu.Item onPress={() => handleRate("not_like")} title="Não gostei" leadingIcon="thumb-down" />
-            <Menu.Item onPress={() => handleRate("favorite")} title="Amei" leadingIcon="heart" />
-            {feedback && (
-                <>
-                    <Divider />
-                    <Menu.Item onPress={() => handleRate(null)} title="Remover" leadingIcon="close" />
-                </>
+      <View style={[styles.actionsContainer, { borderColor: theme.colors.outlineVariant }]}>
+        {/* Botão Visto */}
+        <View style={styles.actionButtonWrapper}>
+            {isWatchLoading ? (
+                <ActivityIndicator size={20} color={theme.colors.primary} />
+            ) : (
+                <IconButton 
+                    icon={isWatched ? "eye-check" : "eye-outline"} 
+                    iconColor={isWatched ? theme.colors.primary : theme.colors.onSurfaceVariant}
+                    size={22}
+                    onPress={handleToggleWatched}
+                    style={styles.iconButton}
+                />
             )}
-        </Menu>
+        </View>
+
+        <Divider style={{ width: '70%', alignSelf: 'center' }} />
+
+        {/* Botão Avaliar (Menu) */}
+        <View style={styles.actionButtonWrapper}>
+            {isRateLoading ? (
+                <ActivityIndicator size={20} color={getFeedbackColor()} />
+            ) : (
+                <Menu
+                    visible={menuVisible}
+                    onDismiss={() => setMenuVisible(false)}
+                    anchorPosition="bottom"
+                    contentStyle={{ marginTop: 0 }}
+                    anchor={
+                        <TouchableOpacity 
+                            onPress={() => setMenuVisible(true)}
+                            activeOpacity={0.6}
+                            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                        >
+                            <View pointerEvents="none">
+                                <IconButton 
+                                    icon={getFeedbackIcon()} 
+                                    iconColor={getFeedbackColor()}
+                                    size={22}
+                                    style={styles.iconButton}
+                                />
+                            </View>
+                        </TouchableOpacity>
+                    }
+                >
+                    <Menu.Item onPress={() => handleRate("liked")} title="Gostei" leadingIcon="thumb-up" />
+                    <Menu.Item onPress={() => handleRate("not_like")} title="Não gostei" leadingIcon="thumb-down" />
+                    <Menu.Item onPress={() => handleRate("favorite")} title="Favorito" leadingIcon="heart" />
+                    {feedback && (
+                        <>
+                            <Divider />
+                            <Menu.Item onPress={() => handleRate(null)} title="Remover" leadingIcon="close" />
+                        </>
+                    )}
+                </Menu>
+            )}
+        </View>
       </View>
     </View>
   );
@@ -122,14 +152,14 @@ export default function EpisodeItem({ episode, onToggleWatched, onRate, serieSlu
 const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
-    marginBottom: 12,
+    height: 104,
+    marginBottom: 8,
     borderRadius: 8,
     borderWidth: 1,
     overflow: 'hidden',
-    height: 120, // Aumentado para acomodar melhor os dois botões verticalmente
   },
   imageContainer: {
-    width: 120, // Ajustado para equilibrar o layout
+    width: 70,
     height: '100%',
   },
   image: {
@@ -138,39 +168,43 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
-    padding: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
     justifyContent: 'center',
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 4,
+    marginBottom: 2,
   },
   episodeNumber: {
     fontSize: 12,
     fontWeight: 'bold',
   },
   date: {
-    fontSize: 12,
+    fontSize: 11,
   },
   title: {
     fontSize: 14,
     fontWeight: 'bold',
-    marginBottom: 4,
+    marginBottom: 2,
   },
   overview: {
     fontSize: 11,
-    lineHeight: 16,
+    lineHeight: 15,
   },
   actionsContainer: {
-    width: 60, // Largura suficiente para o toque
+    width: 48,
     borderLeftWidth: 1,
     height: '100%',
+    justifyContent: 'space-between',
   },
-  actionButton: {
-    flex: 1, // Ocupa exatamente 50% da altura cada
+  actionButtonWrapper: {
+    flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    width: '100%',
+  },
+  iconButton: {
+    margin: 0,
   }
 });
