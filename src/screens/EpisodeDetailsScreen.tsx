@@ -13,13 +13,13 @@ export default function EpisodeDetailsScreen() {
   const theme = useTheme();
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
-  
+
   // Parâmetros recebidos da navegação
   const { slug, seasonNumber, episodeNumber } = route.params;
 
-  const { 
-    episode, previous, next, loading, actionLoading, 
-    toggleWatched, rateEpisode 
+  const {
+    episode, previous, next, loading, actionLoading,
+    toggleWatched, rateEpisode
   } = useEpisodeDetails(slug, seasonNumber, episodeNumber);
 
   const [menuVisible, setMenuVisible] = useState(false);
@@ -43,9 +43,9 @@ export default function EpisodeDetailsScreen() {
 
   if (!episode) {
     return (
-        <View style={[styles.loadingContainer, { backgroundColor: theme.colors.background }]}>
-            <Text style={{ color: theme.colors.onBackground }}>Episódio não encontrado.</Text>
-        </View>
+      <View style={[styles.loadingContainer, { backgroundColor: theme.colors.background }]}>
+        <Text style={{ color: theme.colors.onBackground }}>Episódio não encontrado.</Text>
+      </View>
     );
   }
 
@@ -57,19 +57,19 @@ export default function EpisodeDetailsScreen() {
   const feedback = episode.user_feedback;
 
   const getFeedbackIcon = () => {
-    switch(feedback) {
+    switch (feedback) {
       case 'liked': return 'thumb-up';
       case 'not_like': return 'thumb-down';
-      case 'favorite': return 'heart'; // Ajustado para favorite conforme seu sistema
+      case 'favorite': return 'star';
       default: return 'star-outline';
     }
   };
 
   const getFeedbackColor = () => {
-    switch(feedback) {
-      case 'liked': return theme.colors.primary;
-      case 'not_like': return theme.colors.error;
-      case 'favorite': return '#E91E63';
+    switch (feedback) {
+      case 'liked': return '#22c55e';
+      case 'not_like': return '#ef4444';
+      case 'favorite': return '#eab308';
       default: return theme.colors.onSurfaceVariant;
     }
   };
@@ -77,16 +77,16 @@ export default function EpisodeDetailsScreen() {
   return (
     <ScrollView style={[styles.container, { backgroundColor: theme.colors.background }]}>
       <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
-      
+
       {/* Header Image */}
       <View style={styles.imageHeader}>
-        <Image 
-          source={{ uri: episode.still_path?.tmdb ? `https://image.tmdb.org/t/p/w780${episode.still_path.tmdb}` : undefined }} 
+        <Image
+          source={{ uri: episode.still_path?.tmdb ? `https://image.tmdb.org/t/p/w780${episode.still_path.tmdb}` : undefined }}
           style={styles.backdrop}
           resizeMode="cover"
         />
         <View style={styles.overlay} />
-        
+
         {/* Back Button */}
         <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
           <Icon name="arrow-left" size={24} color="#FFF" />
@@ -94,103 +94,103 @@ export default function EpisodeDetailsScreen() {
 
         {/* Title Info over Image */}
         <View style={styles.headerContent}>
-            <Text style={styles.showTitle}>{episode.tv_show.title}</Text>
-            <Text style={styles.episodeTitle}>{episode.title}</Text>
+          <Text style={styles.showTitle}>{episode.tv_show.title}</Text>
+          <Text style={styles.episodeTitle}>{episode.title}</Text>
         </View>
       </View>
 
       <View style={styles.content}>
         {/* Meta Data Row */}
         <View style={styles.metaRow}>
-            <View style={styles.seasonBadge}>
-                <Text style={styles.seasonText}>S{episode.season_number} E{episode.episode_number}</Text>
-            </View>
-            <Text style={[styles.metaText, { color: theme.colors.secondary }]}>
-                {formatDate(episode.air_date)} • {episode.runtime} min
-            </Text>
+          <View style={styles.seasonBadge}>
+            <Text style={styles.seasonText}>S{episode.season_number} E{episode.episode_number}</Text>
+          </View>
+          <Text style={[styles.metaText, { color: theme.colors.secondary }]}>
+            {formatDate(episode.air_date)} • {episode.runtime} min
+          </Text>
         </View>
 
         {/* Actions Row */}
         <View style={[styles.actionsRow, { borderColor: theme.colors.outlineVariant }]}>
-             <Button 
-                mode={isWatched ? "contained" : "outlined"} 
-                onPress={toggleWatched}
-                loading={actionLoading}
-                icon={isWatched ? "check" : "eye-outline"}
-                style={{ flex: 1, marginRight: 8 }}
-             >
-                {isWatched ? "Visto" : "Marcar Visto"}
-             </Button>
+          <Button
+            mode={isWatched ? "contained" : "outlined"}
+            onPress={toggleWatched}
+            loading={actionLoading}
+            icon={isWatched ? "check" : "eye-outline"}
+            style={{ flex: 1, marginRight: 8 }}
+          >
+            {isWatched ? "Visto" : "Marcar Visto"}
+          </Button>
 
-             <Menu
-                visible={menuVisible}
-                onDismiss={() => setMenuVisible(false)}
-                anchor={
-                    <IconButton
-                        icon={getFeedbackIcon()}
-                        iconColor={getFeedbackColor()}
-                        mode="outlined"
-                        onPress={() => setMenuVisible(true)}
-                    />
-                }
-            >
-                <Menu.Item onPress={() => { setMenuVisible(false); rateEpisode("liked"); }} title="Gostei" leadingIcon="thumb-up" />
-                <Menu.Item onPress={() => { setMenuVisible(false); rateEpisode("not_like"); }} title="Não gostei" leadingIcon="thumb-down" />
-                <Menu.Item onPress={() => { setMenuVisible(false); rateEpisode("favorite"); }} title="Amei" leadingIcon="heart" />
-                <Divider />
-                <Menu.Item onPress={() => { setMenuVisible(false); rateEpisode(null); }} title="Remover" leadingIcon="close" />
-            </Menu>
+          <Menu
+            visible={menuVisible}
+            onDismiss={() => setMenuVisible(false)}
+            anchor={
+              <IconButton
+                icon={getFeedbackIcon()}
+                iconColor={getFeedbackColor()}
+                mode="outlined"
+                onPress={() => setMenuVisible(true)}
+              />
+            }
+          >
+            <Menu.Item onPress={() => { setMenuVisible(false); rateEpisode("liked"); }} title="Gostei" leadingIcon="thumb-up" />
+            <Menu.Item onPress={() => { setMenuVisible(false); rateEpisode("not_like"); }} title="Não gostei" leadingIcon="thumb-down" />
+            <Menu.Item onPress={() => { setMenuVisible(false); rateEpisode("favorite"); }} title="Favortio" leadingIcon="star" />
+            <Divider />
+            <Menu.Item onPress={() => { setMenuVisible(false); rateEpisode(null); }} title="Remover" leadingIcon="close" />
+          </Menu>
         </View>
 
         {/* Overview */}
         <Text style={[styles.sectionTitle, { color: theme.colors.onBackground }]}>Sinopse</Text>
         <Text style={[styles.bodyText, { color: theme.colors.onSurfaceVariant }]}>
-            {episode.overview || "Sem descrição disponível."}
+          {episode.overview || "Sem descrição disponível."}
         </Text>
 
         {/* Crew Highlight */}
         <View style={styles.crewContainer}>
-            {directors.length > 0 && (
-                <View style={styles.crewItem}>
-                    <Text style={[styles.crewLabel, { color: theme.colors.secondary }]}>Direção</Text>
-                    <Text style={{ color: theme.colors.onSurface }}>{directors.map((d: any) => d.name).join(", ")}</Text>
-                </View>
-            )}
-            {writers.length > 0 && (
-                <View style={styles.crewItem}>
-                    <Text style={[styles.crewLabel, { color: theme.colors.secondary }]}>Roteiro</Text>
-                    <Text style={{ color: theme.colors.onSurface }}>{writers.map((w: any) => w.name).join(", ")}</Text>
-                </View>
-            )}
+          {directors.length > 0 && (
+            <View style={styles.crewItem}>
+              <Text style={[styles.crewLabel, { color: theme.colors.secondary }]}>Direção</Text>
+              <Text style={{ color: theme.colors.onSurface }}>{directors.map((d: any) => d.name).join(", ")}</Text>
+            </View>
+          )}
+          {writers.length > 0 && (
+            <View style={styles.crewItem}>
+              <Text style={[styles.crewLabel, { color: theme.colors.secondary }]}>Roteiro</Text>
+              <Text style={{ color: theme.colors.onSurface }}>{writers.map((w: any) => w.name).join(", ")}</Text>
+            </View>
+          )}
         </View>
-        
+
         {/* Navigation Buttons */}
         <View style={styles.navContainer}>
-            <View style={{ flex: 1, paddingRight: 8 }}>
-                {previous && (
-                    <Button 
-                        mode="outlined" 
-                        onPress={() => navigateToEpisode(previous)}
-                        icon="arrow-left"
-                        compact
-                    >
-                        Anterior
-                    </Button>
-                )}
-            </View>
-            <View style={{ flex: 1, paddingLeft: 8 }}>
-                {next && (
-                    <Button 
-                        mode="outlined" 
-                        onPress={() => navigateToEpisode(next)}
-                        icon="arrow-right"
-                        contentStyle={{ flexDirection: 'row-reverse' }}
-                        compact
-                    >
-                        Próximo
-                    </Button>
-                )}
-            </View>
+          <View style={{ flex: 1, paddingRight: 8 }}>
+            {previous && (
+              <Button
+                mode="outlined"
+                onPress={() => navigateToEpisode(previous)}
+                icon="arrow-left"
+                compact
+              >
+                Anterior
+              </Button>
+            )}
+          </View>
+          <View style={{ flex: 1, paddingLeft: 8 }}>
+            {next && (
+              <Button
+                mode="outlined"
+                onPress={() => navigateToEpisode(next)}
+                icon="arrow-right"
+                contentStyle={{ flexDirection: 'row-reverse' }}
+                compact
+              >
+                Próximo
+              </Button>
+            )}
+          </View>
         </View>
 
         <Divider style={{ marginVertical: 20 }} />
@@ -198,22 +198,22 @@ export default function EpisodeDetailsScreen() {
         {/* Guest Stars / Cast */}
         <Text style={[styles.sectionTitle, { color: theme.colors.onBackground }]}>Elenco do Episódio</Text>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.castList}>
-            {episode.cast.map((person: any) => (
-                <View key={person.id + person.character} style={styles.castCard}>
-                    {person.profile_path?.tmdb ? (
-                        <Image 
-                            source={{ uri: `https://image.tmdb.org/t/p/w185${person.profile_path.tmdb}` }} 
-                            style={styles.castImage} 
-                        />
-                    ) : (
-                        <View style={[styles.castImage, { backgroundColor: theme.colors.surfaceVariant, justifyContent: 'center', alignItems: 'center' }]}>
-                            <Icon name="account" size={30} color={theme.colors.onSurfaceVariant} />
-                        </View>
-                    )}
-                    <Text numberOfLines={1} style={[styles.castName, { color: theme.colors.onSurface }]}>{person.name}</Text>
-                    <Text numberOfLines={1} style={[styles.castChar, { color: theme.colors.secondary }]}>{person.character}</Text>
+          {episode.cast.map((person: any) => (
+            <View key={person.id + person.character} style={styles.castCard}>
+              {person.profile_path?.tmdb ? (
+                <Image
+                  source={{ uri: `https://image.tmdb.org/t/p/w185${person.profile_path.tmdb}` }}
+                  style={styles.castImage}
+                />
+              ) : (
+                <View style={[styles.castImage, { backgroundColor: theme.colors.surfaceVariant, justifyContent: 'center', alignItems: 'center' }]}>
+                  <Icon name="account" size={30} color={theme.colors.onSurfaceVariant} />
                 </View>
-            ))}
+              )}
+              <Text numberOfLines={1} style={[styles.castName, { color: theme.colors.onSurface }]}>{person.name}</Text>
+              <Text numberOfLines={1} style={[styles.castChar, { color: theme.colors.secondary }]}>{person.character}</Text>
+            </View>
+          ))}
         </ScrollView>
 
       </View>
@@ -252,7 +252,7 @@ const styles = StyleSheet.create({
     padding: 16,
     paddingBottom: 24,
     // Fundo gradiente seria ideal aqui, mas usando sólido/transparente para simplificar
-    backgroundColor: 'rgba(0,0,0,0.6)', 
+    backgroundColor: 'rgba(0,0,0,0.6)',
   },
   showTitle: {
     color: 'rgba(255,255,255,0.8)',
