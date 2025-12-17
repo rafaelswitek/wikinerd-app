@@ -27,7 +27,7 @@ export default function EpisodeDetailsScreen() {
   // Navegar para outro episódio (substitui a tela atual na pilha ou dá push)
   const navigateToEpisode = (ep: any) => {
     navigation.replace("EpisodeDetails", {
-      tvShowId,
+      slug,
       seasonNumber: ep.season_number,
       episodeNumber: ep.episode_number
     });
