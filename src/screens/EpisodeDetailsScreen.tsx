@@ -1,20 +1,30 @@
-import React, { useState } from "react";
-import { View, ScrollView, StyleSheet, Image, Dimensions, TouchableOpacity, StatusBar } from "react-native";
-import { Text, useTheme, ActivityIndicator, IconButton, Button, Divider, Menu, Avatar } from "react-native-paper";
+import React, { useState, useContext, useEffect, useMemo } from "react";
+import { View, ScrollView, StyleSheet, Image, Dimensions, TouchableOpacity, StatusBar, Linking, Modal, TextInput, Alert } from "react-native";
+import { Text, useTheme, ActivityIndicator, IconButton, Button, Divider, Menu } from "react-native-paper";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 
 import { useEpisodeDetails } from "../hooks/useEpisodeDetails";
-import { formatDate } from "../utils/helpers";
+import { formatDate, getRatings } from "../utils/helpers"; // Importando getRatings
+import { AuthContext } from "../context/AuthContext";
+import { api } from "../services/api";
 
-const { width } = Dimensions.get("window");
+import ReviewStatsCard from "../components/ReviewStats";
+import ReviewCard from "../components/ReviewCard";
+import WriteReviewModal from "../components/WriteReviewModal";
+import ShareReviewModal from "../components/ShareReviewModal";
+
+import { Review, ReviewStats } from "../types/Review";
+import { MediaImage } from "../types/Interactions";
+
+const { width, height } = Dimensions.get("window");
 
 export default function EpisodeDetailsScreen() {
   const theme = useTheme();
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
+  const { user } = useContext(AuthContext);
 
-  // Parâmetros recebidos da navegação
   const { slug, seasonNumber, episodeNumber } = route.params;
 
   const {
@@ -22,16 +32,147 @@ export default function EpisodeDetailsScreen() {
     toggleWatched, rateEpisode
   } = useEpisodeDetails(slug, seasonNumber, episodeNumber);
 
+  const [activeTab, setActiveTab] = useState("about");
   const [menuVisible, setMenuVisible] = useState(false);
+  const [selectedImage, setSelectedImage] = useState<MediaImage | null>(null);
+  const [isImageModalVisible, setIsImageModalVisible] = useState(false);
 
-  // Navegar para outro episódio (substitui a tela atual na pilha ou dá push)
+  const [castSearch, setCastSearch] = useState("");
+  const [crewSearch, setCrewSearch] = useState("");
+
+  const [reviews, setReviews] = useState<Review[]>([]);
+  const [reviewStats, setReviewStats] = useState<ReviewStats | null>(null);
+  const [reviewsLoading, setReviewsLoading] = useState(false);
+  const [reviewsPage, setReviewsPage] = useState(1);
+  const [hasMoreReviews, setHasMoreReviews] = useState(false);
+  const [writeModalVisible, setWriteModalVisible] = useState(false);
+  const [shareModalVisible, setShareModalVisible] = useState(false);
+  const [justCreatedReview, setJustCreatedReview] = useState<Review | null>(null);
+
   const navigateToEpisode = (ep: any) => {
+    setActiveTab("about");
+    setReviews([]);
+    setReviewStats(null);
+    setReviewsPage(1);
+    
     navigation.replace("EpisodeDetails", {
       slug,
       seasonNumber: ep.season_number,
       episodeNumber: ep.episode_number
     });
   };
+
+  const openImageModal = (image: MediaImage) => { setSelectedImage(image); setIsImageModalVisible(true); };
+  const closeImageModal = () => { setIsImageModalVisible(false); setSelectedImage(null); };
+
+  const fetchReviewsData = async (page = 1) => {
+    if (!episode?.id) return;
+    if (page === 1) setReviewsLoading(true);
+
+    try {
+      const promises: Promise<any>[] = [
+        api.get(`https://api.wikinerd.com.br/api/episodes/${episode.id}/reviews?page=${page}`)
+      ];
+
+      if (page === 1) {
+        promises.push(api.get(`https://api.wikinerd.com.br/api/episodes/${episode.id}/reviews/stats`));
+      }
+
+      const results = await Promise.all(promises);
+      const reviewsResponse = results[0].data;
+
+      if (page === 1) {
+        setReviews(reviewsResponse.data);
+        if (results[1]) setReviewStats(results[1].data);
+      } else {
+        setReviews(prev => [...prev, ...reviewsResponse.data]);
+      }
+
+      setHasMoreReviews(reviewsResponse.meta.current_page < reviewsResponse.meta.last_page);
+      setReviewsPage(page);
+
+    } catch (error) {
+      console.log("Erro ao carregar reviews do episódio", error);
+    } finally {
+      setReviewsLoading(false);
+    }
+  };
+
+  const handleLoadMoreReviews = () => {
+    if (!reviewsLoading && hasMoreReviews) {
+      fetchReviewsData(reviewsPage + 1);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === 'reviews' && reviews.length === 0 && episode) {
+      fetchReviewsData();
+    }
+  }, [activeTab, episode]);
+
+  const handleDeleteReview = (id: string) => {
+    Alert.alert("Excluir", "Deseja realmente excluir sua avaliação?", [
+      { text: "Cancelar", style: "cancel" },
+      {
+        text: "Excluir", style: "destructive", onPress: async () => {
+          try {
+            await api.delete(`/users/episode/review/${id}`);
+            setReviews(prev => prev.filter(r => r.review_id !== id));
+            if (episode?.id) {
+               api.get(`https://api.wikinerd.com.br/api/episodes/${episode.id}/reviews/stats`)
+                .then(res => setReviewStats(res.data));
+            }
+          } catch (error) {
+            Alert.alert("Erro", "Não foi possível excluir a avaliação.");
+          }
+        }
+      }
+    ]);
+  };
+
+  const handleReviewSuccess = (newReview: any) => {
+    const currentUserInfo = user || { id: newReview.user_id, name: "Usuário", username: "usuario", avatar: null };
+    const fullReview: Review = { ...newReview, review_id: newReview.id, user: currentUserInfo, feedback_counts: { useful: 0, not_useful: 0, report: 0, total: 0 }, user_feedback: null };
+    setReviews(prev => [fullReview, ...prev]);
+
+    if (episode?.id) {
+      api.get(`https://api.wikinerd.com.br/api/episodes/${episode.id}/reviews/stats`).then(res => setReviewStats(res.data));
+    }
+    setJustCreatedReview(fullReview);
+    setTimeout(() => setShareModalVisible(true), 500);
+  };
+  
+  const handleShareExistingReview = (reviewToShare: Review) => {
+    setJustCreatedReview(reviewToShare);
+    setShareModalVisible(true);
+  };
+
+  const filteredCast = useMemo(() => {
+    if (!episode?.cast) return [];
+    if (!castSearch) return episode.cast;
+    return episode.cast.filter((c: any) => c.name.toLowerCase().includes(castSearch.toLowerCase()) || c.character.toLowerCase().includes(castSearch.toLowerCase()));
+  }, [episode, castSearch]);
+
+  const filteredCrew = useMemo(() => {
+    if (!episode?.crew) return [];
+    if (!crewSearch) return episode.crew;
+    return episode.crew.filter((c: any) => c.name.toLowerCase().includes(crewSearch.toLowerCase()) || c.job.toLowerCase().includes(crewSearch.toLowerCase()));
+  }, [episode, crewSearch]);
+
+  const directors = useMemo(() => {
+    if (!episode?.crew) return [];
+    return episode.crew.filter((c: any) => c.job === "Director");
+  }, [episode]);
+
+  const writers = useMemo(() => {
+    if (!episode?.crew) return [];
+    return episode.crew.filter((c: any) => c.job === "Writer" || c.job === "Screenplay");
+  }, [episode]);
+
+  // Uilizando o getRatings do helpers.ts para garantir identidade visual e textual
+  const { normalizedRatings, average } = useMemo(() => {
+    return getRatings(episode, 'tv');
+  }, [episode]);
 
   if (loading) {
     return (
@@ -48,10 +189,6 @@ export default function EpisodeDetailsScreen() {
       </View>
     );
   }
-
-  // Filtrar equipe principal
-  const directors = episode.crew.filter((c: any) => c.job === "Director");
-  const writers = episode.crew.filter((c: any) => c.job === "Writer" || c.job === "Screenplay");
 
   const isWatched = !!episode.watched_date;
   const feedback = episode.user_feedback;
@@ -74,150 +211,297 @@ export default function EpisodeDetailsScreen() {
     }
   };
 
+  const renderTabButton = (key: string, label: string) => (
+    <TouchableOpacity onPress={() => setActiveTab(key)}>
+      <Text style={[
+        key === activeTab ? styles.tabActive : styles.tabInactive,
+        {
+          backgroundColor: key === activeTab ? theme.colors.surfaceVariant : 'transparent',
+          color: key === activeTab ? theme.colors.onSurface : theme.colors.onSurfaceVariant
+        }
+      ]}>
+        {label}
+      </Text>
+    </TouchableOpacity>
+  );
+
   return (
-    <ScrollView style={[styles.container, { backgroundColor: theme.colors.background }]}>
-      <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
+    <>
+      <ScrollView style={[styles.container, { backgroundColor: theme.colors.background }]} contentContainerStyle={{ paddingBottom: 40 }}>
+        <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
 
-      {/* Header Image */}
-      <View style={styles.imageHeader}>
-        <Image
-          source={{ uri: episode.still_path?.tmdb ? `https://image.tmdb.org/t/p/w780${episode.still_path.tmdb}` : undefined }}
-          style={styles.backdrop}
-          resizeMode="cover"
-        />
-        <View style={styles.overlay} />
+        <View style={styles.imageHeader}>
+          <Image
+            source={{ uri: episode.still_path?.tmdb ? `https://image.tmdb.org/t/p/w780${episode.still_path.tmdb}` : undefined }}
+            style={styles.backdrop}
+            resizeMode="cover"
+          />
+          <View style={styles.overlay} />
 
-        {/* Back Button */}
-        <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
-          <Icon name="arrow-left" size={24} color="#FFF" />
-        </TouchableOpacity>
+          <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
+            <Icon name="arrow-left" size={24} color="#FFF" />
+          </TouchableOpacity>
 
-        {/* Title Info over Image */}
-        <View style={styles.headerContent}>
-          <Text style={styles.showTitle}>{episode.tv_show.title}</Text>
-          <Text style={styles.episodeTitle}>{episode.title}</Text>
-        </View>
-      </View>
-
-      <View style={styles.content}>
-        {/* Meta Data Row */}
-        <View style={styles.metaRow}>
-          <View style={styles.seasonBadge}>
-            <Text style={styles.seasonText}>S{episode.season_number} E{episode.episode_number}</Text>
+          <View style={styles.headerContent}>
+            <Text style={styles.showTitle}>{episode.tv_show.title}</Text>
+            <Text style={styles.episodeTitle}>{episode.title}</Text>
           </View>
-          <Text style={[styles.metaText, { color: theme.colors.secondary }]}>
-            {formatDate(episode.air_date)} • {episode.runtime} min
-          </Text>
         </View>
 
-        {/* Actions Row */}
-        <View style={[styles.actionsRow, { borderColor: theme.colors.outlineVariant }]}>
-          <Button
-            mode={isWatched ? "contained" : "outlined"}
-            onPress={toggleWatched}
-            loading={actionLoading}
-            icon={isWatched ? "check" : "eye-outline"}
-            style={{ flex: 1, marginRight: 8 }}
-          >
-            {isWatched ? "Visto" : "Marcar Visto"}
-          </Button>
-
-          <Menu
-            visible={menuVisible}
-            onDismiss={() => setMenuVisible(false)}
-            anchor={
-              <IconButton
-                icon={getFeedbackIcon()}
-                iconColor={getFeedbackColor()}
-                mode="outlined"
-                onPress={() => setMenuVisible(true)}
-              />
-            }
-          >
-            <Menu.Item onPress={() => { setMenuVisible(false); rateEpisode("liked"); }} title="Gostei" leadingIcon="thumb-up" />
-            <Menu.Item onPress={() => { setMenuVisible(false); rateEpisode("not_like"); }} title="Não gostei" leadingIcon="thumb-down" />
-            <Menu.Item onPress={() => { setMenuVisible(false); rateEpisode("favorite"); }} title="Favortio" leadingIcon="star" />
-            <Divider />
-            <Menu.Item onPress={() => { setMenuVisible(false); rateEpisode(null); }} title="Remover" leadingIcon="close" />
-          </Menu>
-        </View>
-
-        {/* Overview */}
-        <Text style={[styles.sectionTitle, { color: theme.colors.onBackground }]}>Sinopse</Text>
-        <Text style={[styles.bodyText, { color: theme.colors.onSurfaceVariant }]}>
-          {episode.overview || "Sem descrição disponível."}
-        </Text>
-
-        {/* Crew Highlight */}
-        <View style={styles.crewContainer}>
-          {directors.length > 0 && (
-            <View style={styles.crewItem}>
-              <Text style={[styles.crewLabel, { color: theme.colors.secondary }]}>Direção</Text>
-              <Text style={{ color: theme.colors.onSurface }}>{directors.map((d: any) => d.name).join(", ")}</Text>
+        <View style={styles.content}>
+          <View style={styles.metaRow}>
+            <View style={styles.seasonBadge}>
+              <Text style={styles.seasonText}>S{episode.season_number} E{episode.episode_number}</Text>
             </View>
-          )}
-          {writers.length > 0 && (
-            <View style={styles.crewItem}>
-              <Text style={[styles.crewLabel, { color: theme.colors.secondary }]}>Roteiro</Text>
-              <Text style={{ color: theme.colors.onSurface }}>{writers.map((w: any) => w.name).join(", ")}</Text>
-            </View>
-          )}
-        </View>
-
-        {/* Navigation Buttons */}
-        <View style={styles.navContainer}>
-          <View style={{ flex: 1, paddingRight: 8 }}>
-            {previous && (
-              <Button
-                mode="outlined"
-                onPress={() => navigateToEpisode(previous)}
-                icon="arrow-left"
-                compact
-              >
-                Anterior
-              </Button>
-            )}
+            <Text style={[styles.metaText, { color: theme.colors.secondary }]}>
+              {formatDate(episode.air_date)} • {episode.runtime} min
+            </Text>
           </View>
-          <View style={{ flex: 1, paddingLeft: 8 }}>
-            {next && (
-              <Button
-                mode="outlined"
-                onPress={() => navigateToEpisode(next)}
-                icon="arrow-right"
-                contentStyle={{ flexDirection: 'row-reverse' }}
-                compact
-              >
-                Próximo
-              </Button>
-            )}
-          </View>
-        </View>
 
-        <Divider style={{ marginVertical: 20 }} />
+          <View style={[styles.actionsRow, { borderColor: theme.colors.outlineVariant }]}>
+            <Button
+              mode={isWatched ? "contained" : "outlined"}
+              onPress={toggleWatched}
+              loading={actionLoading}
+              icon={isWatched ? "check" : "eye-outline"}
+              style={{ flex: 1, marginRight: 8 }}
+            >
+              {isWatched ? "Visto" : "Marcar Visto"}
+            </Button>
 
-        {/* Guest Stars / Cast */}
-        <Text style={[styles.sectionTitle, { color: theme.colors.onBackground }]}>Elenco do Episódio</Text>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.castList}>
-          {episode.cast.map((person: any) => (
-            <View key={person.id + person.character} style={styles.castCard}>
-              {person.profile_path?.tmdb ? (
-                <Image
-                  source={{ uri: `https://image.tmdb.org/t/p/w185${person.profile_path.tmdb}` }}
-                  style={styles.castImage}
+            <Menu
+              visible={menuVisible}
+              onDismiss={() => setMenuVisible(false)}
+              anchor={
+                <IconButton
+                  icon={getFeedbackIcon()}
+                  iconColor={getFeedbackColor()}
+                  mode="outlined"
+                  onPress={() => setMenuVisible(true)}
                 />
-              ) : (
-                <View style={[styles.castImage, { backgroundColor: theme.colors.surfaceVariant, justifyContent: 'center', alignItems: 'center' }]}>
-                  <Icon name="account" size={30} color={theme.colors.onSurfaceVariant} />
-                </View>
-              )}
-              <Text numberOfLines={1} style={[styles.castName, { color: theme.colors.onSurface }]}>{person.name}</Text>
-              <Text numberOfLines={1} style={[styles.castChar, { color: theme.colors.secondary }]}>{person.character}</Text>
-            </View>
-          ))}
-        </ScrollView>
+              }
+            >
+              <Menu.Item onPress={() => { setMenuVisible(false); rateEpisode("liked"); }} title="Gostei" leadingIcon="thumb-up" />
+              <Menu.Item onPress={() => { setMenuVisible(false); rateEpisode("not_like"); }} title="Não gostei" leadingIcon="thumb-down" />
+              <Menu.Item onPress={() => { setMenuVisible(false); rateEpisode("favorite"); }} title="Favorito" leadingIcon="star" />
+              <Divider />
+              <Menu.Item onPress={() => { setMenuVisible(false); rateEpisode(null); }} title="Remover" leadingIcon="close" />
+            </Menu>
+          </View>
 
-      </View>
-    </ScrollView>
+          <View style={[styles.section, { borderTopColor: theme.colors.outlineVariant, marginTop: 0 }]}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabBar}>
+                {renderTabButton("about", "Sobre")}
+                {renderTabButton("cast", "Elenco")}
+                {renderTabButton("crew", "Equipe")}
+                {renderTabButton("images", "Imagens")}
+                {renderTabButton("videos", "Vídeos")}
+                {renderTabButton("reviews", "Avaliações")}
+            </ScrollView>
+
+            {activeTab === "about" && (
+                <View>
+                    <Text style={[styles.sectionTitle, { color: theme.colors.onBackground }]}>Sinopse</Text>
+                    <Text style={[styles.bodyText, { color: theme.colors.onSurfaceVariant }]}>
+                        {episode.overview || "Sem descrição disponível."}
+                    </Text>
+
+                    <View style={styles.crewContainer}>
+                      {directors.length > 0 && (
+                        <View style={styles.crewItem}>
+                          <Text style={[styles.crewLabel, { color: theme.colors.secondary }]}>Direção</Text>
+                          <Text style={{ color: theme.colors.onSurface }}>{directors.map((d: any) => d.name).join(", ")}</Text>
+                        </View>
+                      )}
+                      {writers.length > 0 && (
+                        <View style={styles.crewItem}>
+                          <Text style={[styles.crewLabel, { color: theme.colors.secondary }]}>Roteiro</Text>
+                          <Text style={{ color: theme.colors.onSurface }}>{writers.map((w: any) => w.name).join(", ")}</Text>
+                        </View>
+                      )}
+                    </View>
+
+                    {/* Card de Notas da Crítica (Igual ao MediaDetailsScreen usando getRatings) */}
+                    <View style={[styles.cardContainer, { backgroundColor: theme.colors.surface, borderColor: theme.colors.outlineVariant }]}>
+                      <Text style={[styles.cardTitle, { color: theme.colors.onSurface }]}>Notas da Crítica</Text>
+                      {normalizedRatings.map((item) => (
+                        <TouchableOpacity key={item.platform} style={styles.contentRow} onPress={() => Linking.openURL(item.link)} disabled={item.link === '#'} activeOpacity={0.7}>
+                          <View style={[styles.scoreBox, { backgroundColor: item.color, marginRight: 12, minWidth: 48, alignItems: 'center' }]}>
+                            <Text style={styles.scoreText}>{item.platform === 'Rotten Tomatoes' || item.platform === 'Metacritic' ? item.rating.toFixed(0) + '%' : item.rating.toFixed(1)}</Text>
+                          </View>
+                          <View style={{ flex: 1 }}>
+                            <Text style={[styles.infoTitle, { color: theme.colors.onSurface }]}>{item.label}</Text>
+                            <Text style={[styles.infoSubtitle, { color: theme.colors.secondary }]}>{item.status}</Text>
+                          </View>
+                          <Icon name="open-in-new" size={20} color={theme.colors.onSurfaceVariant} />
+                        </TouchableOpacity>
+                      ))}
+                      {normalizedRatings.length > 0 && <Divider style={[styles.divider, { backgroundColor: theme.colors.outlineVariant }]} />}
+                      <View style={{ alignItems: 'center' }}>
+                        <Text style={[styles.infoSubtitle, { color: theme.colors.secondary }]}>Média da Crítica</Text>
+                        <Text style={[styles.bigScore, { color: theme.colors.onSurface }]}>{average ? `${average}/5` : '-'}</Text>
+                      </View>
+                    </View>
+
+                    <View style={styles.navContainer}>
+                    <View style={{ flex: 1, paddingRight: 8 }}>
+                        {previous && (
+                        <Button
+                            mode="outlined"
+                            onPress={() => navigateToEpisode(previous)}
+                            icon="arrow-left"
+                            compact
+                        >
+                            Anterior
+                        </Button>
+                        )}
+                    </View>
+                    <View style={{ flex: 1, paddingLeft: 8 }}>
+                        {next && (
+                        <Button
+                            mode="outlined"
+                            onPress={() => navigateToEpisode(next)}
+                            icon="arrow-right"
+                            contentStyle={{ flexDirection: 'row-reverse' }}
+                            compact
+                        >
+                            Próximo
+                        </Button>
+                        )}
+                    </View>
+                    </View>
+                </View>
+            )}
+
+            {activeTab === "cast" && (
+                <View>
+                    <TextInput 
+                        style={[styles.searchInput, { color: theme.colors.onSurface, backgroundColor: theme.colors.surfaceVariant }]} 
+                        placeholder="Buscar elenco..." 
+                        placeholderTextColor={theme.colors.onSurfaceVariant} 
+                        value={castSearch} 
+                        onChangeText={setCastSearch} 
+                    />
+                    <View style={styles.gridContainer}>
+                        {filteredCast.map((person: any) => (
+                            <View key={person.id + person.character} style={styles.gridItem}>
+                                {person.profile_path?.tmdb ? (
+                                    <Image source={{ uri: `https://image.tmdb.org/t/p/w185${person.profile_path.tmdb}` }} style={styles.gridImage} />
+                                ) : (
+                                    <View style={[styles.gridImage, { justifyContent: 'center', alignItems: 'center' }]}>
+                                        <Icon name="account" size={40} color={theme.colors.onSurfaceVariant} />
+                                    </View>
+                                )}
+                                <Text numberOfLines={1} style={[styles.gridName, { color: theme.colors.onSurface }]}>{person.name}</Text>
+                                <Text numberOfLines={1} style={[styles.gridRole, { color: theme.colors.secondary }]}>{person.character}</Text>
+                            </View>
+                        ))}
+                        {filteredCast.length === 0 && <Text style={{ color: theme.colors.secondary }}>Nenhum membro do elenco encontrado.</Text>}
+                    </View>
+                </View>
+            )}
+
+            {activeTab === "crew" && (
+                <View>
+                    <TextInput 
+                        style={[styles.searchInput, { color: theme.colors.onSurface, backgroundColor: theme.colors.surfaceVariant }]} 
+                        placeholder="Buscar equipe..." 
+                        placeholderTextColor={theme.colors.onSurfaceVariant} 
+                        value={crewSearch} 
+                        onChangeText={setCrewSearch} 
+                    />
+                    <View style={styles.gridContainer}>
+                        {filteredCrew.map((person: any) => (
+                            <View key={person.id + person.job + person.name} style={styles.gridItem}>
+                                {person.profile_path?.tmdb ? (
+                                    <Image source={{ uri: `https://image.tmdb.org/t/p/w185${person.profile_path.tmdb}` }} style={styles.gridImage} />
+                                ) : (
+                                    <View style={[styles.gridImage, { justifyContent: 'center', alignItems: 'center' }]}>
+                                        <Icon name="account-cog" size={40} color={theme.colors.onSurfaceVariant} />
+                                    </View>
+                                )}
+                                <Text numberOfLines={1} style={[styles.gridName, { color: theme.colors.onSurface }]}>{person.name}</Text>
+                                <Text numberOfLines={1} style={[styles.gridRole, { color: theme.colors.secondary }]}>{person.job}</Text>
+                            </View>
+                        ))}
+                        {filteredCrew.length === 0 && <Text style={{ color: theme.colors.secondary }}>Nenhum membro da equipe encontrado.</Text>}
+                    </View>
+                </View>
+            )}
+
+            {activeTab === "images" && (
+                <View style={styles.imagesGrid}>
+                    {episode.images?.map((img: MediaImage, idx: number) => (
+                        <TouchableOpacity key={img.id || idx} style={styles.galleryImageContainer} onPress={() => openImageModal(img)}>
+                            <Image source={{ uri: `https://image.tmdb.org/t/p/w500${img.file_path}` }} style={styles.galleryImage} />
+                        </TouchableOpacity>
+                    ))}
+                    {(!episode.images || episode.images.length === 0) && <Text style={{ color: theme.colors.secondary }}>Nenhuma imagem disponível.</Text>}
+                </View>
+            )}
+
+            {activeTab === "videos" && (
+                <View>
+                    {episode.videos?.map((vid: any) => (
+                        <TouchableOpacity key={vid.id} style={[styles.videoItem, { backgroundColor: theme.colors.surface }]} onPress={() => vid.site === "YouTube" && Linking.openURL(`https://www.youtube.com/watch?v=${vid.key}`)}>
+                            <Image source={{ uri: `https://img.youtube.com/vi/${vid.key}/0.jpg` }} style={styles.videoThumbnail} />
+                            <View style={styles.videoInfo}>
+                                <Text style={[styles.videoName, { color: theme.colors.onSurface }]}>{vid.name}</Text>
+                                <Text style={[styles.videoType, { color: theme.colors.secondary }]}>{vid.type}</Text>
+                            </View>
+                            <Icon name="play-circle" size={30} color={theme.colors.primary} />
+                        </TouchableOpacity>
+                    ))}
+                    {(!episode.videos || episode.videos.length === 0) && <Text style={{ color: theme.colors.secondary }}>Nenhum vídeo disponível.</Text>}
+                </View>
+            )}
+
+            {activeTab === "reviews" && (
+                <View>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                        <Text style={[styles.sectionTitle, { color: theme.colors.onBackground, marginBottom: 0 }]}>Avaliações</Text>
+                        <Button mode="contained" onPress={() => setWriteModalVisible(true)} compact>Escrever</Button>
+                    </View>
+
+                    {reviewStats && <ReviewStatsCard stats={reviewStats} />}
+
+                    {reviews.map(review => (
+                        <ReviewCard key={review.review_id} review={review} onDelete={handleDeleteReview} onShare={handleShareExistingReview} />
+                    ))}
+
+                    {reviews.length === 0 && !reviewsLoading && (
+                        <Text style={{ textAlign: 'center', marginVertical: 20, color: theme.colors.secondary }}>Seja o primeiro a avaliar este episódio!</Text>
+                    )}
+
+                    {hasMoreReviews && <Button mode="outlined" onPress={handleLoadMoreReviews} loading={reviewsLoading}>Carregar mais</Button>}
+                </View>
+            )}
+
+          </View>
+        </View>
+      </ScrollView>
+
+      <Modal visible={isImageModalVisible} transparent={true} onRequestClose={closeImageModal} animationType="fade">
+        <View style={styles.modalContainer}>
+          <TouchableOpacity style={styles.modalCloseArea} activeOpacity={1} onPress={closeImageModal}>
+            {selectedImage && <Image source={{ uri: `https://image.tmdb.org/t/p/original${selectedImage.file_path}` }} style={styles.fullscreenImage} resizeMode="contain" />}
+            <TouchableOpacity style={styles.closeButton} onPress={closeImageModal}><Icon name="close-circle" size={40} color="rgba(255,255,255,0.8)" /></TouchableOpacity>
+          </TouchableOpacity>
+        </View>
+      </Modal>
+
+      {episode && <WriteReviewModal 
+        visible={writeModalVisible} 
+        onDismiss={() => setWriteModalVisible(false)} 
+        onSubmitSuccess={handleReviewSuccess} 
+        movieId={episode.id}
+        movieTitle={`S${episode.season_number}E${episode.episode_number}: ${episode.title}`} 
+        isEpisode={true}
+      />}
+      
+      {episode && justCreatedReview && <ShareReviewModal visible={shareModalVisible} onDismiss={() => setShareModalVisible(false)} movie={episode as any} review={justCreatedReview} />}
+
+    </>
   );
 }
 
@@ -237,7 +521,6 @@ const styles = StyleSheet.create({
   overlay: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: 'rgba(0,0,0,0.3)',
-    // Gradiente sutil simulado
   },
   backButton: {
     position: 'absolute',
@@ -251,7 +534,6 @@ const styles = StyleSheet.create({
   headerContent: {
     padding: 16,
     paddingBottom: 24,
-    // Fundo gradiente seria ideal aqui, mas usando sólido/transparente para simplificar
     backgroundColor: 'rgba(0,0,0,0.6)',
   },
   showTitle: {
@@ -269,7 +551,7 @@ const styles = StyleSheet.create({
     padding: 16,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
-    marginTop: -16, // Sobreposição leve
+    marginTop: -16,
   },
   metaRow: {
     flexDirection: 'row',
@@ -295,6 +577,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     marginBottom: 20,
   },
+  section: { 
+    marginTop: 16,
+  },
   sectionTitle: {
     fontSize: 18,
     fontWeight: 'bold',
@@ -306,6 +591,13 @@ const styles = StyleSheet.create({
     textAlign: 'justify',
     marginBottom: 16,
   },
+  navContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 20,
+  },
+  
+  // Crew
   crewContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -319,32 +611,46 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: 'bold',
   },
-  navContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginTop: 10,
-  },
-  castList: {
-    paddingVertical: 8,
-  },
-  castCard: {
-    width: 100,
-    marginRight: 12,
-    alignItems: 'center',
-  },
-  castImage: {
-    width: 80,
-    height: 80,
-    borderRadius: 40, // Circular
-    marginBottom: 8,
-  },
-  castName: {
-    fontSize: 12,
-    fontWeight: 'bold',
-    textAlign: 'center',
-  },
-  castChar: {
-    fontSize: 10,
-    textAlign: 'center',
-  },
+
+  // Ratings Card Styles
+  cardContainer: { marginHorizontal: 0, marginTop: 24, borderRadius: 8, padding: 16, borderWidth: 1 },
+  cardTitle: { fontSize: 16, fontWeight: 'bold', marginBottom: 16 },
+  contentRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 4 },
+  scoreBox: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 4 },
+  scoreText: { color: 'white', fontWeight: 'bold', fontSize: 14 },
+  infoTitle: { fontWeight: 'bold', fontSize: 14 },
+  infoSubtitle: { fontSize: 12 },
+  divider: { marginVertical: 12 },
+  bigScore: { fontSize: 24, fontWeight: 'bold', marginTop: 4 },
+
+  // Tab Styles
+  tabBar: { flexDirection: 'row', marginBottom: 16, paddingHorizontal: 4 },
+  tabActive: { paddingVertical: 6, paddingHorizontal: 12, borderRadius: 16, fontWeight: 'bold', marginRight: 8, overflow: 'hidden' },
+  tabInactive: { paddingVertical: 6, paddingHorizontal: 12, marginRight: 8 },
+
+  // Grid Styles
+  searchInput: { padding: 10, borderRadius: 8, marginBottom: 16 },
+  gridContainer: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' },
+  gridItem: { width: '48%', marginBottom: 16, alignItems: 'center' },
+  gridImage: { width: '100%', height: 180, borderRadius: 8, marginBottom: 4, backgroundColor: '#333', resizeMode: 'cover' },
+  gridName: { fontWeight: 'bold', fontSize: 14, textAlign: 'center' },
+  gridRole: { fontSize: 12, textAlign: 'center' },
+
+  // Images Tab
+  imagesGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  galleryImageContainer: { width: (width - 48) / 3, height: 80, borderRadius: 4, marginBottom: 4 },
+  galleryImage: { width: '100%', height: '100%', resizeMode: 'cover', borderRadius: 4 },
+  
+  // Modal Styles
+  modalContainer: { flex: 1, backgroundColor: 'rgba(0,0,0,0.95)', justifyContent: 'center', alignItems: 'center' },
+  modalCloseArea: { flex: 1, width: '100%', justifyContent: 'center', alignItems: 'center', position: 'relative' },
+  fullscreenImage: { width: width, height: height },
+  closeButton: { position: 'absolute', top: 50, right: 25, zIndex: 10 },
+
+  // Video Styles
+  videoItem: { flexDirection: 'row', alignItems: 'center', marginBottom: 16, borderRadius: 8, padding: 8 },
+  videoThumbnail: { width: 120, height: 68, borderRadius: 4 },
+  videoInfo: { flex: 1, marginLeft: 12 },
+  videoName: { fontSize: 14, fontWeight: 'bold', marginBottom: 4 },
+  videoType: { fontSize: 12 },
 });
