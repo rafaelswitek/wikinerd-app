@@ -17,7 +17,6 @@ import ResetPasswordScreen from "./src/screens/auth/ResetPasswordScreen";
 import SettingsScreen from "./src/screens/SettingsScreen";
 import PersonDetailsScreen from "./src/screens/PersonDetailsScreen";
 import SplashScreen from "./src/screens/SplashScreen";
-import ListsScreen from "./src/screens/ListsScreen";
 import ListDetailsScreen from "./src/screens/ListDetailsScreen";
 import EpisodeDetailsScreen from "./src/screens/EpisodeDetailsScreen";
 
@@ -153,16 +152,6 @@ function AppStack({ theme }: { theme: any }) {
         options={{
           headerShown: true,
           title: "Configurações",
-          headerStyle: { backgroundColor: theme.colors.card },
-          headerTintColor: theme.colors.text
-        }}
-      />
-      <Stack.Screen
-        name="Lists"
-        component={ListsScreen}
-        options={{
-          headerShown: true,
-          title: "Listas",
           headerStyle: { backgroundColor: theme.colors.card },
           headerTintColor: theme.colors.text
         }}

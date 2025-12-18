@@ -13,6 +13,7 @@ import Header from "../components/Header";
 import { AuthContext } from "../context/AuthContext";
 import MoviesScreen from "./MoviesScreen";
 import PeopleScreen from "./PeopleScreen";
+import ListsScreen from "./ListsScreen";
 
 const Tab = createBottomTabNavigator();
 const Drawer = createDrawerNavigator();
@@ -289,6 +290,15 @@ export default function HomeScreen() {
         options={{ 
           headerShown: true,
           title: "Pessoas",
+        }}
+      />
+
+      <Drawer.Screen
+        name="Lists"
+        component={ListsScreen}
+        options={{ 
+          headerShown: true,
+          title: "Listas",
         }}
       />
     </Drawer.Navigator>
