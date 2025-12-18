@@ -1,16 +1,18 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useContext } from "react";
 import { Alert } from "react-native";
 import { api } from "../services/api";
 import { EpisodeDetailsResponse } from "../types/TvShow";
+import { AuthContext } from "../context/AuthContext";
 
 export function useEpisodeDetails(tvShowId: string, seasonNumber: number, episodeNumber: number) {
+  const { user } = useContext(AuthContext);
   const [data, setData] = useState<EpisodeDetailsResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
 
   useEffect(() => {
     fetchEpisode();
-  }, [tvShowId, seasonNumber, episodeNumber]);
+  }, [tvShowId, seasonNumber, episodeNumber, user]); // Adiciona user na dependência
 
   async function fetchEpisode() {
     setLoading(true);
@@ -22,20 +24,16 @@ export function useEpisodeDetails(tvShowId: string, seasonNumber: number, episod
       
       const responseData = response.data;
 
-      // 2. Se o episódio existe, busca a interação do usuário (visto/feedback)
-      if (responseData.episode?.id) {
+      // 2. Se o episódio existe e TEM USUÁRIO, busca a interação
+      if (responseData.episode?.id && user) {
         try {
           const interactionRes = await api.get(`/users/episode/${responseData.episode.id}`);
           
-          // Mescla os dados de interação no objeto do episódio
           if (interactionRes.data) {
             responseData.episode.watched_date = interactionRes.data.watched_date;
-            // Mapeia 'feedback' da API para 'user_feedback' do frontend
             responseData.episode.user_feedback = interactionRes.data.feedback;
           }
         } catch (error: any) {
-          // Se der 404, significa que o usuário nunca interagiu (não viu/não avaliou),
-          // então mantemos como null. Ignoramos o erro.
           if (error.response?.status !== 404) {
              console.log("Erro ao buscar interação:", error);
           }
@@ -51,16 +49,14 @@ export function useEpisodeDetails(tvShowId: string, seasonNumber: number, episod
     }
   }
 
-  // Ações de interação (Marcar Visto / Avaliar)
   const toggleWatched = async () => {
-    if (!data?.episode) return;
+    if (!data?.episode || !user) return;
     
     const isWatched = !!data.episode.watched_date;
     setActionLoading(true);
 
     try {
       if (isWatched) {
-        // Remove a visualização
         await api.delete(`/users/episode/${data.episode.id}`);
         
         setData(prev => prev ? ({
@@ -68,7 +64,6 @@ export function useEpisodeDetails(tvShowId: string, seasonNumber: number, episod
           episode: { ...prev.episode, watched_date: null, user_feedback: null }
         }) : null);
       } else {
-        // Marca como visto
         const today = new Date().toISOString().split('T')[0];
         await api.put(`/users/episode`, {
           episode_id: data.episode.id,
@@ -88,12 +83,11 @@ export function useEpisodeDetails(tvShowId: string, seasonNumber: number, episod
   };
 
   const rateEpisode = async (feedback: "liked" | "not_like" | "favorite" | null) => {
-    if (!data?.episode) return;
+    if (!data?.episode || !user) return;
     setActionLoading(true);
     try {
         const today = new Date().toISOString().split('T')[0];
         
-        // A avaliação também garante que o episódio esteja marcado como visto
         await api.put(`/users/episode`, {
             episode_id: data.episode.id,
             watched_date: data.episode.watched_date || today,

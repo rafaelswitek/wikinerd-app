@@ -5,7 +5,6 @@ import { AuthResponse, UserProfile, AuthContextData } from "../types/Auth";
 
 export const AuthContext = createContext<AuthContextData>({} as AuthContextData);
 
-// Variáveis fora do componente para gerenciar a fila de requisições durante o refresh
 let isRefreshing = false;
 let failedQueue: any[] = [];
 
@@ -25,15 +24,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Função signOut isolada para ser usada no interceptor e no contexto
   const signOut = useCallback(async () => {
     try {
-      // Tenta avisar o backend
       await api.post("/logout");
     } catch (error) {
-      console.log("Erro ao fazer logout na API (possivelmente token inválido)", error);
+      // Erro 401 no logout é esperado se o token já expirou, ignoramos.
     } finally {
-      // Limpeza local obrigatória
       await AsyncStorage.removeItem("@wikinerd:token");
       delete api.defaults.headers.Authorization;
       setToken(null);
@@ -51,7 +47,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   }, []);
 
-  // Configuração do Interceptor
   useEffect(() => {
     const interceptorId = api.interceptors.response.use(
       (response) => response,
@@ -90,13 +85,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             api.defaults.headers.Authorization = `Bearer ${access_token}`;
             setToken(access_token);
 
-            // Processa a fila de espera com o novo token
             processQueue(null, access_token);
 
             originalRequest.headers.Authorization = `Bearer ${access_token}`;
             return api(originalRequest);
           } catch (refreshError) {
-            // Se o refresh falhar, rejeita a fila e desloga
             processQueue(refreshError, null);
             console.log("Falha no refresh token. Realizando logout.");
             await signOut();
@@ -114,7 +107,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     };
   }, [signOut]);
 
-  // Carregamento Inicial (Bootstrap)
   useEffect(() => {
     async function loadStorageData() {
       try {
@@ -123,20 +115,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         if (storedToken) {
           api.defaults.headers.Authorization = `Bearer ${storedToken}`;
           setToken(storedToken);
-          // Reutiliza a função já criada
           await fetchUserProfile();
         }
       } catch (error) {
         console.log("Sessão inválida ou erro de rede no boot.");
-        // Opcional: Se quiser forçar logout se o perfil falhar:
-        // await signOut(); 
       } finally {
         setLoading(false);
       }
     }
 
     loadStorageData();
-  }, [fetchUserProfile]); // Dependência atualizada
+  }, [fetchUserProfile]);
 
   const signIn = useCallback(async (response: AuthResponse) => {
     const { access_token } = response;

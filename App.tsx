@@ -100,17 +100,18 @@ function AppStack({ theme }: { theme: any }) {
       <Stack.Screen
         name="MediaDetails"
         component={MediaDetailsScreen}
-        options={{
+        options={({ route }) => ({
           headerShown: true,
-          title: "",
-          headerTransparent: true,
-          headerTintColor: '#fff',
-        }}
+          title: route?.params?.title ?? "",
+        })}
       />
       <Stack.Screen
         name="PersonDetails"
         component={PersonDetailsScreen}
-        options={{ title: "Detalhes", headerTransparent: true, headerTintColor: '#fff' }}
+        options={{
+          headerShown: true,
+          title: "",
+        }}
       />
       <Stack.Screen
         name="ListDetails"
@@ -125,10 +126,10 @@ function AppStack({ theme }: { theme: any }) {
       <Stack.Screen
         name="EpisodeDetails"
         component={EpisodeDetailsScreen}
-        options={{
-          headerShown: false,
-          animation: 'slide_from_right'
-        }}
+        options={({ route }) => ({
+          headerShown: true,
+          title: route?.params?.title ?? "",
+        })}
       />
 
       <Stack.Screen name="Login" component={LoginScreen} />

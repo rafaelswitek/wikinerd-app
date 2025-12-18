@@ -76,7 +76,7 @@ export default function MediaHeader({ media, handleShare }: Props) {
 
 const styles = StyleSheet.create({
   headerWrapper: { position: "relative", width: width },
-  backdrop: { width: width, height: 450, opacity: 0.6 },
+  backdrop: { width: width, height: 350, opacity: 0.6 },
   overlay: { ...StyleSheet.absoluteFillObject },
   headerContent: { position: 'absolute', bottom: 20, left: 16, right: 16, flexDirection: 'row', alignItems: 'flex-end' },
   poster: { width: 120, height: 180, borderRadius: 8, marginRight: 16, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' },

@@ -32,6 +32,7 @@ export default function MediaCard({ media, style }: Props) {
     
     navigation.push("MediaDetails", { 
       slug: media.slug,
+      title: media.title,
       type: isTv ? 'tv' : 'movie' 
     });
   };

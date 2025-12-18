@@ -73,7 +73,7 @@ export default function PersonDetailsScreen({ route, navigation }: any) {
     return (
       <TouchableOpacity 
         style={styles.creditItem}
-        onPress={() => navigation.push("MediaDetails", { slug: item.slug })} // Assumindo que MediaDetails aceita slug
+        onPress={() => navigation.push("MediaDetails", { slug: item.slug, title: item.title })}
       >
         <Image source={{ uri: imgUrl }} style={styles.creditImage} />
         <Text style={styles.creditTitle} numberOfLines={2}>{item.title || item.name}</Text>

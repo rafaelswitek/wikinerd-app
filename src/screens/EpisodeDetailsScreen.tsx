@@ -56,6 +56,7 @@ export default function EpisodeDetailsScreen() {
     setReviewsPage(1);
 
     navigation.replace("EpisodeDetails", {
+      title: `S${ep.season_number}E${ep.episode_number}: ${ep.title}`,
       slug,
       seasonNumber: ep.season_number,
       episodeNumber: ep.episode_number
@@ -237,9 +238,6 @@ export default function EpisodeDetailsScreen() {
           />
           <View style={styles.overlay} />
 
-          <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
-            <Icon name="arrow-left" size={24} color="#FFF" />
-          </TouchableOpacity>
 
           <View style={styles.headerContent}>
             <Text style={styles.showTitle}>{episode.tv_show.title}</Text>

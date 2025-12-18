@@ -3,6 +3,8 @@ import { ScrollView, View, StyleSheet, StatusBar, TouchableOpacity, Linking, Mod
 import { Text, ActivityIndicator, Chip, Divider, useTheme, Button, Menu } from "react-native-paper";
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 
+import { useNavigation, DrawerActions } from "@react-navigation/native";
+
 import { useMediaDetails } from "../hooks/useMediaDetails";
 import { getCertificationColor, formatCurrency, getSocialData, getMediaImageUrl, getMediaYear } from "../utils/helpers";
 import { Country, Language } from "../types/Movie";
@@ -27,6 +29,7 @@ export default function MediaDetailsScreen({ route }: any) {
   const { slug, type = 'movie' } = route.params;
   const isTv = type === 'tv';
   const theme = useTheme();
+  const navigation = useNavigation<any>();
   const { user } = useContext(AuthContext);
 
   const {
@@ -489,11 +492,11 @@ export default function MediaDetailsScreen({ route }: any) {
               <TextInput style={[styles.searchInput, { color: theme.colors.onSurface, backgroundColor: theme.colors.surfaceVariant }]} placeholder="Buscar..." placeholderTextColor={theme.colors.onSurfaceVariant} value={castSearch} onChangeText={setCastSearch} />
               <View style={styles.gridContainer}>
                 {filteredCast.map(person => (
-                  <View key={person.id + person.character} style={styles.gridItem}>
+                  <TouchableOpacity key={person.id + person.character} style={styles.gridItem} onPress={() => navigation.navigate("PersonDetails", { slug: person.slug })}>
                     <Image source={{ uri: person.profile_path?.tmdb ? `https://image.tmdb.org/t/p/w185${person.profile_path.tmdb}` : undefined }} style={styles.gridImage} />
                     <Text numberOfLines={1} style={[styles.gridName, { color: theme.colors.onSurface }]}>{person.name}</Text>
                     <Text numberOfLines={1} style={[styles.gridRole, { color: theme.colors.secondary }]}>{person.character}</Text>
-                  </View>
+                  </TouchableOpacity>
                 ))}
               </View>
             </View>
@@ -504,11 +507,11 @@ export default function MediaDetailsScreen({ route }: any) {
               <TextInput style={[styles.searchInput, { color: theme.colors.onSurface, backgroundColor: theme.colors.surfaceVariant }]} placeholder="Buscar..." placeholderTextColor={theme.colors.onSurfaceVariant} value={crewSearch} onChangeText={setCrewSearch} />
               <View style={styles.gridContainer}>
                 {filteredCrew.map(person => (
-                  <View key={person.id + (isTv ? person.job : person.job.job)} style={styles.gridItem}>
+                  <TouchableOpacity key={person.id + (isTv ? person.job : person.job.job)} style={styles.gridItem} onPress={() => navigation.navigate("PersonDetails", { slug: person.slug })}>
                     <Image source={{ uri: person.profile_path?.tmdb ? `https://image.tmdb.org/t/p/w185${person.profile_path.tmdb}` : undefined }} style={styles.gridImage} />
                     <Text numberOfLines={1} style={[styles.gridName, { color: theme.colors.onSurface }]}>{person.name}</Text>
                     <Text numberOfLines={1} style={[styles.gridRole, { color: theme.colors.secondary }]}>{isTv ? person.job : person.job.job}</Text>
-                  </View>
+                  </TouchableOpacity>
                 ))}
               </View>
             </View>

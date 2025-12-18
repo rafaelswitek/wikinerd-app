@@ -63,6 +63,7 @@ export default function EpisodeItem({ episode, onToggleWatched, onRate, serieSlu
 
   const handlePress = () => {
     navigation.navigate("EpisodeDetails", {
+      title: `S${episode.season_number}E${episode.episode_number}: ${episode.title}`,
       slug: serieSlug,
       seasonNumber: episode.season_number,
       episodeNumber: episode.episode_number

@@ -1,14 +1,16 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useContext } from "react";
 import { Alert } from "react-native";
 import { api } from "../services/api";
 import { Movie } from "../types/Movie";
 import { TvShow } from "../types/TvShow";
 import { UserInteraction, MediaImage, MediaVideo } from "../types/Interactions";
 import { getRatings } from "../utils/helpers";
+import { AuthContext } from "../context/AuthContext";
 
 type MediaType = 'movie' | 'tv';
 
 export function useMediaDetails(slug: string, type: MediaType = 'movie') {
+  const { user } = useContext(AuthContext);
   const [media, setMedia] = useState<Movie | TvShow | null>(null);
   const [providers, setProviders] = useState<any[]>([]);
   const [cast, setCast] = useState<any[]>([]);
@@ -27,7 +29,7 @@ export function useMediaDetails(slug: string, type: MediaType = 'movie') {
 
   useEffect(() => {
     fetchData();
-  }, [slug, type]);
+  }, [slug, type, user]); // Adicionado user para recarregar se o usuário logar
 
   async function fetchData() {
     setLoading(true);
@@ -56,7 +58,12 @@ export function useMediaDetails(slug: string, type: MediaType = 'movie') {
         setImages(imagesRes.data);
         setVideos(videosRes.data);
 
-        fetchUserInteraction(data.id);
+        // Só busca interação se houver usuário
+        if (user) {
+          fetchUserInteraction(data.id);
+        } else {
+          setUserInteraction(null);
+        }
 
         if (type === 'movie' && data.collection?.id) {
           try {
@@ -87,6 +94,7 @@ export function useMediaDetails(slug: string, type: MediaType = 'movie') {
   }
 
   async function fetchUserInteraction(id: string) {
+    if (!user) return; 
     try {
       const endpoint = type === 'tv' ? 'tv-show' : 'movie';
       const response = await api.get(`/users/${endpoint}/${id}`);
@@ -99,7 +107,7 @@ export function useMediaDetails(slug: string, type: MediaType = 'movie') {
   }
 
   const handleInteraction = async (field: 'status' | 'feedback', value: string | null) => {
-    if (!media) return;
+    if (!media || !user) return; // Proteção adicional
     setInteractionLoading(true);
 
     const endpoint = type === 'tv' ? 'tv-show' : 'movie';
@@ -185,7 +193,7 @@ export function useMediaDetails(slug: string, type: MediaType = 'movie') {
   };
 
   const markSeasonWatched = async (seasonId: string) => {
-    if (type !== 'tv') return;
+    if (type !== 'tv' || !user) return;
     setSeasonLoading(true);
     try {
       const today = new Date().toISOString().split('T')[0];
@@ -201,7 +209,7 @@ export function useMediaDetails(slug: string, type: MediaType = 'movie') {
   };
 
   const unmarkSeasonWatched = async (seasonId: string) => {
-    if (type !== 'tv') return;
+    if (type !== 'tv' || !user) return;
     setSeasonLoading(true);
     try {
       await api.delete(`/users/season/${seasonId}`);
@@ -214,7 +222,7 @@ export function useMediaDetails(slug: string, type: MediaType = 'movie') {
   };
 
   const toggleEpisodeWatched = async (episodeId: string, isWatched: boolean) => {
-    if (type !== 'tv') return;
+    if (type !== 'tv' || !user) return;
     try {
       if (isWatched) {
         await api.delete(`/users/episode/${episodeId}`);
@@ -232,7 +240,7 @@ export function useMediaDetails(slug: string, type: MediaType = 'movie') {
   };
 
   const rateEpisode = async (episodeId: string, feedback: "liked" | "not_like" | "favorite" | null) => {
-    if (type !== 'tv') return;
+    if (type !== 'tv' || !user) return;
     try {
       const today = new Date().toISOString().split('T')[0];
       await api.put(`/users/episode`, {
