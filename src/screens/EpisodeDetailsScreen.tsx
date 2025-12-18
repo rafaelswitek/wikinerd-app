@@ -494,9 +494,9 @@ export default function EpisodeDetailsScreen() {
         visible={writeModalVisible} 
         onDismiss={() => setWriteModalVisible(false)} 
         onSubmitSuccess={handleReviewSuccess} 
-        movieId={episode.id}
-        movieTitle={`S${episode.season_number}E${episode.episode_number}: ${episode.title}`} 
-        isEpisode={true}
+        mediaId={episode.id} // Passa o ID do episódio direto
+        mediaTitle={`S${episode.season_number}E${episode.episode_number}: ${episode.title}`} 
+        mediaType="episode" // Tipo episode esconde os seletores no Modal
       />}
       
       {episode && justCreatedReview && <ShareReviewModal visible={shareModalVisible} onDismiss={() => setShareModalVisible(false)} movie={episode as any} review={justCreatedReview} />}
