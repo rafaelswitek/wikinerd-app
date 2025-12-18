@@ -587,9 +587,9 @@ export default function MediaDetailsScreen({ route }: any) {
       {media && justCreatedReview && <ShareReviewModal
         visible={shareModalVisible}
         onDismiss={() => setShareModalVisible(false)}
-        title={media.title}
-        subtitle={`Filme • ${getMediaYear(media)}` }
-        image={getMediaImageUrl(media.poster_path)}
+        title={media.title + `${justCreatedReview.episode ? ' | ' + justCreatedReview.episode.title : ''}`}
+        subtitle={justCreatedReview.episode ? `S${justCreatedReview.episode.season_number}E${justCreatedReview.episode.episode_number} • ${getMediaYear(justCreatedReview.episode)}` : `Filme • ${getMediaYear(media)}`}
+        image={justCreatedReview.episode?.still_path ? getMediaImageUrl(justCreatedReview.episode.still_path) : getMediaImageUrl(media.poster_path)}
         review={justCreatedReview}
       />}
     </>

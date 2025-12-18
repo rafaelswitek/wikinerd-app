@@ -34,7 +34,7 @@ export interface FeedbackCounts {
 
 export interface ReviewEpisode {
   id: number;
-  name: string;
+  title: string;
   season_number: number;
   episode_number: number;
   still_path?: string | null;

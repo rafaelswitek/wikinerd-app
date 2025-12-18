@@ -502,7 +502,7 @@ export default function EpisodeDetailsScreen() {
       {episode && justCreatedReview && <ShareReviewModal
         visible={shareModalVisible}
         onDismiss={() => setShareModalVisible(false)}
-        title={`${episode.title}`}
+        title={`${episode.tv_show.title} | ${episode.title}`}
         subtitle={`S${episode.season_number}E${episode.episode_number} • ${getMediaYear(episode)}` }
         image={getMediaImageUrl(episode.still_path)}
         review={justCreatedReview}

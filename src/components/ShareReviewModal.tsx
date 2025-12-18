@@ -125,7 +125,7 @@ export default function ShareReviewModal({ visible, onDismiss, title, subtitle, 
                 </View>
 
                 <View style={styles.brandBadge}>
-                  <Text style={styles.brandText}>WIKINERD</Text>
+                  <Text style={styles.brandText}>WIKINERD.COM.BR</Text>
                 </View>
               </View>
             </ViewShot>
