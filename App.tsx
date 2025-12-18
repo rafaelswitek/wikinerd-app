@@ -108,10 +108,10 @@ function AppStack({ theme }: { theme: any }) {
       <Stack.Screen
         name="PersonDetails"
         component={PersonDetailsScreen}
-        options={{
+        options={({ route }) => ({
           headerShown: true,
-          title: "",
-        }}
+          title: route?.params?.title ?? "",
+        })}
       />
       <Stack.Screen
         name="ListDetails"

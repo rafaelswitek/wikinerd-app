@@ -492,7 +492,7 @@ export default function MediaDetailsScreen({ route }: any) {
               <TextInput style={[styles.searchInput, { color: theme.colors.onSurface, backgroundColor: theme.colors.surfaceVariant }]} placeholder="Buscar..." placeholderTextColor={theme.colors.onSurfaceVariant} value={castSearch} onChangeText={setCastSearch} />
               <View style={styles.gridContainer}>
                 {filteredCast.map(person => (
-                  <TouchableOpacity key={person.id + person.character} style={styles.gridItem} onPress={() => navigation.navigate("PersonDetails", { slug: person.slug })}>
+                  <TouchableOpacity key={person.id + person.character} style={styles.gridItem} onPress={() => navigation.navigate("PersonDetails", { title: person.name, slug: person.slug })}>
                     <Image source={{ uri: person.profile_path?.tmdb ? `https://image.tmdb.org/t/p/w185${person.profile_path.tmdb}` : undefined }} style={styles.gridImage} />
                     <Text numberOfLines={1} style={[styles.gridName, { color: theme.colors.onSurface }]}>{person.name}</Text>
                     <Text numberOfLines={1} style={[styles.gridRole, { color: theme.colors.secondary }]}>{person.character}</Text>
@@ -507,7 +507,7 @@ export default function MediaDetailsScreen({ route }: any) {
               <TextInput style={[styles.searchInput, { color: theme.colors.onSurface, backgroundColor: theme.colors.surfaceVariant }]} placeholder="Buscar..." placeholderTextColor={theme.colors.onSurfaceVariant} value={crewSearch} onChangeText={setCrewSearch} />
               <View style={styles.gridContainer}>
                 {filteredCrew.map(person => (
-                  <TouchableOpacity key={person.id + (isTv ? person.job : person.job.job)} style={styles.gridItem} onPress={() => navigation.navigate("PersonDetails", { slug: person.slug })}>
+                  <TouchableOpacity key={person.id + (isTv ? person.job : person.job.job)} style={styles.gridItem} onPress={() => navigation.navigate("PersonDetails", { title: person.name, slug: person.slug })}>
                     <Image source={{ uri: person.profile_path?.tmdb ? `https://image.tmdb.org/t/p/w185${person.profile_path.tmdb}` : undefined }} style={styles.gridImage} />
                     <Text numberOfLines={1} style={[styles.gridName, { color: theme.colors.onSurface }]}>{person.name}</Text>
                     <Text numberOfLines={1} style={[styles.gridRole, { color: theme.colors.secondary }]}>{isTv ? person.job : person.job.job}</Text>

@@ -109,7 +109,7 @@ export default function PeopleScreen() {
     return (
       <TouchableOpacity
         style={[styles.cardContainer, { backgroundColor: theme.colors.surface }]}
-        onPress={() => navigation.navigate("PersonDetails", { slug: item.slug })}
+        onPress={() => navigation.navigate("PersonDetails", { title: item.name, slug: item.slug })}
         activeOpacity={0.7}
       >
         <Image
