@@ -10,9 +10,10 @@ interface Props {
   onToggleWatched: (id: string, isWatched: boolean) => Promise<void>;
   onRate: (id: string, feedback: "liked" | "not_like" | "favorite" | null) => Promise<void>;
   serieSlug: string;
+  user?: any;
 }
 
-export default function EpisodeItem({ episode, onToggleWatched, onRate, serieSlug }: Props) {
+export default function EpisodeItem({ episode, onToggleWatched, onRate, serieSlug, user }: Props) {
   const theme = useTheme();
   const navigation = useNavigation<any>();
   const [menuVisible, setMenuVisible] = useState(false);
@@ -51,7 +52,7 @@ export default function EpisodeItem({ episode, onToggleWatched, onRate, serieSlu
   };
 
   const handleRate = async (value: "liked" | "not_like" | "favorite" | null) => {
-    setMenuVisible(false); // Fecha o menu imediatamente
+    setMenuVisible(false);
     try {
       setIsRateLoading(true);
       await onRate(episode.id, value);
@@ -103,64 +104,64 @@ export default function EpisodeItem({ episode, onToggleWatched, onRate, serieSlu
         </View>
       </TouchableOpacity>
 
-      <View style={[styles.actionsContainer, { borderColor: theme.colors.outlineVariant }]}>
-        {/* Botão Visto */}
-        <View style={styles.actionButtonWrapper}>
-          {isWatchLoading ? (
-            <ActivityIndicator size={20} color={theme.colors.primary} />
-          ) : (
-            <IconButton
-              icon={isWatched ? "eye-check" : "eye-outline"}
-              iconColor={isWatched ? theme.colors.primary : theme.colors.onSurfaceVariant}
-              size={22}
-              onPress={handleToggleWatched}
-              style={styles.iconButton}
-            />
-          )}
-        </View>
+      {user && (
+        <View style={[styles.actionsContainer, { borderColor: theme.colors.outlineVariant }]}>
+          <View style={styles.actionButtonWrapper}>
+            {isWatchLoading ? (
+              <ActivityIndicator size={20} color={theme.colors.primary} />
+            ) : (
+              <IconButton
+                icon={isWatched ? "eye-check" : "eye-outline"}
+                iconColor={isWatched ? theme.colors.primary : theme.colors.onSurfaceVariant}
+                size={22}
+                onPress={handleToggleWatched}
+                style={styles.iconButton}
+              />
+            )}
+          </View>
 
-        <Divider style={{ width: '70%', alignSelf: 'center' }} />
+          <Divider style={{ width: '70%', alignSelf: 'center' }} />
 
-        {/* Botão Avaliar (Menu) */}
-        <View style={styles.actionButtonWrapper}>
-          {isRateLoading ? (
-            <ActivityIndicator size={20} color={getFeedbackColor()} />
-          ) : (
-            <Menu
-              visible={menuVisible}
-              onDismiss={() => setMenuVisible(false)}
-              anchorPosition="bottom"
-              contentStyle={{ marginTop: 0 }}
-              anchor={
-                <TouchableOpacity
-                  onPress={() => setMenuVisible(true)}
-                  activeOpacity={0.6}
-                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                >
-                  <View pointerEvents="none">
-                    <IconButton
-                      icon={getFeedbackIcon()}
-                      iconColor={getFeedbackColor()}
-                      size={22}
-                      style={styles.iconButton}
-                    />
-                  </View>
-                </TouchableOpacity>
-              }
-            >
-              <Menu.Item onPress={() => handleRate("liked")} title="Gostei" leadingIcon="thumb-up" />
-              <Menu.Item onPress={() => handleRate("not_like")} title="Não gostei" leadingIcon="thumb-down" />
-              <Menu.Item onPress={() => handleRate("favorite")} title="Favorito" leadingIcon="heart" />
-              {feedback && (
-                <>
-                  <Divider />
-                  <Menu.Item onPress={() => handleRate(null)} title="Remover" leadingIcon="close" />
-                </>
-              )}
-            </Menu>
-          )}
+          <View style={styles.actionButtonWrapper}>
+            {isRateLoading ? (
+              <ActivityIndicator size={20} color={getFeedbackColor()} />
+            ) : (
+              <Menu
+                visible={menuVisible}
+                onDismiss={() => setMenuVisible(false)}
+                anchorPosition="bottom"
+                contentStyle={{ marginTop: 0 }}
+                anchor={
+                  <TouchableOpacity
+                    onPress={() => setMenuVisible(true)}
+                    activeOpacity={0.6}
+                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                  >
+                    <View pointerEvents="none">
+                      <IconButton
+                        icon={getFeedbackIcon()}
+                        iconColor={getFeedbackColor()}
+                        size={22}
+                        style={styles.iconButton}
+                      />
+                    </View>
+                  </TouchableOpacity>
+                }
+              >
+                <Menu.Item onPress={() => handleRate("liked")} title="Gostei" leadingIcon="thumb-up" />
+                <Menu.Item onPress={() => handleRate("not_like")} title="Não gostei" leadingIcon="thumb-down" />
+                <Menu.Item onPress={() => handleRate("favorite")} title="Favorito" leadingIcon="heart" />
+                {feedback && (
+                  <>
+                    <Divider />
+                    <Menu.Item onPress={() => handleRate(null)} title="Remover" leadingIcon="close" />
+                  </>
+                )}
+              </Menu>
+            )}
+          </View>
         </View>
-      </View>
+      )}
     </View>
   );
 }

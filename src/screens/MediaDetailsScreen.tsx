@@ -41,7 +41,6 @@ export default function MediaDetailsScreen({ route }: any) {
   const [listModalVisible, setListModalVisible] = useState(false);
   const [showAllProviders, setShowAllProviders] = useState(false);
 
-  // Reviews
   const [reviews, setReviews] = useState<Review[]>([]);
   const [reviewStats, setReviewStats] = useState<ReviewStats | null>(null);
   const [reviewsLoading, setReviewsLoading] = useState(false);
@@ -51,15 +50,12 @@ export default function MediaDetailsScreen({ route }: any) {
   const [shareModalVisible, setShareModalVisible] = useState(false);
   const [justCreatedReview, setJustCreatedReview] = useState<Review | null>(null);
 
-  // Filtros Reviews
   const [filterReviewSeason, setFilterReviewSeason] = useState<number | 'all'>('all');
   const [filterReviewEpisode, setFilterReviewEpisode] = useState<number | 'all'>('all');
 
-  // Search Cast/Crew
   const [castSearch, setCastSearch] = useState("");
   const [crewSearch, setCrewSearch] = useState("");
 
-  // TV Specific
   const [selectedSeasonNumber, setSelectedSeasonNumber] = useState<number>(1);
   const [showSeasonMenu, setShowSeasonMenu] = useState(false);
 
@@ -185,7 +181,6 @@ export default function MediaDetailsScreen({ route }: any) {
     setTimeout(() => setShareModalVisible(true), 500);
   };
 
-  // Helpers de Equipe/Elenco Filtrados
   const filteredCast = useMemo(() => {
     if (!castSearch) return cast;
     return cast.filter(c => c.name.toLowerCase().includes(castSearch.toLowerCase()) || c.character.toLowerCase().includes(castSearch.toLowerCase()));
@@ -480,6 +475,7 @@ export default function MediaDetailsScreen({ route }: any) {
                     serieSlug={slug}
                     onToggleWatched={toggleEpisodeWatched}
                     onRate={rateEpisode}
+                    user={user}
                   />
                 ))
               ) : (
