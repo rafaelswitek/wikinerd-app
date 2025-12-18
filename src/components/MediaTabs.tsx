@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useContext, useEffect } from "react";
 import { ScrollView, View } from "react-native";
 import { Text, Button } from "react-native-paper";
 import { Movie } from "../types/Movie";
@@ -6,6 +6,7 @@ import { TvShow } from "../types/TvShow";
 import MediaCard from "./MediaCard";
 import MediaList from "./MediaList";
 import UserWatchlist from "./UserWatchlist";
+import { AuthContext } from "../context/AuthContext";
 
 const renderMovieCard = (item: Movie) => <MediaCard media={item} />;
 const renderTvShowCard = (item: TvShow) => <MediaCard media={item} />;
@@ -15,9 +16,44 @@ interface Props {
 }
 
 export default function MediaTabs({ mediaType }: Props) {
-  const [showWatchlist, setShowWatchlist] = useState(false);
+  const { signed } = useContext(AuthContext);
+  const [showWatchlist, setShowWatchlist] = useState(signed);
+
+  useEffect(() => {
+    setShowWatchlist(signed);
+  }, [signed]);
 
   if (mediaType === "movies") {
+    const renderExploreContent = () => (
+      <ScrollView style={{ flex: 1, padding: 16 }}>
+        <MediaList<Movie>
+          title="Em Breve"
+          endpoint="https://api.wikinerd.com.br/api/movies/upcoming"
+          renderItem={renderMovieCard}
+        />
+
+        <MediaList<Movie>
+          title="Em Cartaz"
+          endpoint="https://api.wikinerd.com.br/api/movies/now-playing"
+          renderItem={renderMovieCard}
+        />
+
+        <MediaList<Movie>
+          title="Mais Avaliados"
+          endpoint="https://api.wikinerd.com.br/api/movies/top-rated"
+          renderItem={renderMovieCard}
+        />
+      </ScrollView>
+    );
+
+    if (!signed) {
+      return (
+        <View style={{ flex: 1 }}>
+          {renderExploreContent()}
+        </View>
+      );
+    }
+
     return (
       <View style={{ flex: 1 }}>
         <View style={{ paddingHorizontal: 16, paddingTop: 16, paddingBottom: 8, flexDirection: 'row', gap: 10 }}>
@@ -40,25 +76,7 @@ export default function MediaTabs({ mediaType }: Props) {
         {showWatchlist ? (
           <UserWatchlist />
         ) : (
-          <ScrollView style={{ flex: 1, padding: 16 }}>
-            <MediaList<Movie>
-              title="Em Breve"
-              endpoint="https://api.wikinerd.com.br/api/movies/upcoming"
-              renderItem={renderMovieCard}
-            />
-
-            <MediaList<Movie>
-              title="Em Cartaz"
-              endpoint="https://api.wikinerd.com.br/api/movies/now-playing"
-              renderItem={renderMovieCard}
-            />
-
-            <MediaList<Movie>
-              title="Mais Avaliados"
-              endpoint="https://api.wikinerd.com.br/api/movies/top-rated"
-              renderItem={renderMovieCard}
-            />
-          </ScrollView>
+          renderExploreContent()
         )}
       </View>
     );

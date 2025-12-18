@@ -1,7 +1,10 @@
-import React from "react";
+import React, { useContext } from "react";
 import { View, StyleSheet } from "react-native";
-import { Button, useTheme } from "react-native-paper";
+import { Button, useTheme, Text, Surface } from "react-native-paper";
+import { useNavigation } from "@react-navigation/native";
+import Icon from "react-native-vector-icons/MaterialCommunityIcons";
 import { UserInteraction } from "../types/Interactions";
+import { AuthContext } from "../context/AuthContext";
 
 interface Props {
   userInteraction: UserInteraction | null;
@@ -13,6 +16,38 @@ interface Props {
 
 export default function MediaActionButtons({ userInteraction, onInteraction, onAddList, loading, isTv }: Props) {
   const theme = useTheme();
+  const { signed } = useContext(AuthContext);
+  const navigation = useNavigation<any>();
+
+  if (!signed) {
+    return (
+      <View style={styles.container}>
+        <Surface style={[styles.guestContainer, { backgroundColor: theme.colors.secondaryContainer }]} elevation={0}>
+          <View style={styles.guestIconContainer}>
+            <Icon name="account-lock-outline" size={24} color={theme.colors.onSecondaryContainer} />
+          </View>
+
+          <View style={styles.guestTextContainer}>
+            <Text variant="titleSmall" style={{ fontWeight: 'bold', color: theme.colors.onSecondaryContainer }}>
+              Faça login para interagir
+            </Text>
+            <Text variant="bodySmall" style={{ color: theme.colors.onSecondaryContainer, opacity: 0.8 }}>
+              Marque como assistido, avalie e crie listas.
+            </Text>
+          </View>
+
+          <Button
+            mode="contained"
+            compact
+            onPress={() => navigation.navigate("Login")}
+            style={{ marginLeft: 8 }}
+          >
+            Entrar
+          </Button>
+        </Surface>
+      </View>
+    );
+  }
 
   const getButtonProps = (isActive: boolean, activeColor: string) => ({
     mode: isActive ? "contained" : "outlined" as "contained" | "outlined",
@@ -136,4 +171,17 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   gridButton: { flex: 1, borderRadius: 4 },
+
+  guestContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    borderRadius: 8,
+  },
+  guestIconContainer: {
+    marginRight: 12,
+  },
+  guestTextContainer: {
+    flex: 1,
+  },
 });
