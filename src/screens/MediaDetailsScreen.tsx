@@ -547,7 +547,9 @@ export default function MediaDetailsScreen({ route }: any) {
             <View>
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
                 <Text style={[styles.sectionTitle, { color: theme.colors.onBackground, marginBottom: 0 }]}>Avaliações</Text>
-                <Button mode="contained" onPress={() => setWriteModalVisible(true)} compact>Escrever</Button>
+                {user && (
+                  <Button mode="contained" onPress={() => setWriteModalVisible(true)} compact>Escrever</Button>
+                )}
               </View>
 
               {reviewStats && <ReviewStatsCard stats={reviewStats} />}
