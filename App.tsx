@@ -99,17 +99,17 @@ function AppStack({ theme }: { theme: any }) {
       <Stack.Screen
         name="MediaDetails"
         component={MediaDetailsScreen}
-        options={({ route }) => ({
+        options={({ route }: any) => ({
           headerShown: true,
-          title: route?.params?.title ?? "",
+          title: (route?.params as any)?.title ?? "",
         })}
       />
       <Stack.Screen
         name="PersonDetails"
         component={PersonDetailsScreen}
-        options={({ route }) => ({
+        options={({ route }: any) => ({
           headerShown: true,
-          title: route?.params?.title ?? "",
+          title: (route?.params as any)?.title ?? "",
         })}
       />
       <Stack.Screen
@@ -125,9 +125,9 @@ function AppStack({ theme }: { theme: any }) {
       <Stack.Screen
         name="EpisodeDetails"
         component={EpisodeDetailsScreen}
-        options={({ route }) => ({
+        options={({ route }: any) => ({
           headerShown: true,
-          title: route?.params?.title ?? "",
+          title: (route?.params as any)?.title ?? "",
         })}
       />
 
