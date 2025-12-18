@@ -132,7 +132,7 @@ const CustomDrawerItem = ({ label, icon, isComingSoon, onPress, active }: Drawer
 function CustomDrawerContent(props: DrawerContentComponentProps) {
   const theme = useTheme();
   const { navigation } = props;
-  const { user, signOut } = useContext(AuthContext);
+  const { user, signOut, signed } = useContext(AuthContext);
   const insets = useSafeAreaInsets();
 
   const styles = {
@@ -144,6 +144,14 @@ function CustomDrawerContent(props: DrawerContentComponentProps) {
     textPrimary: { color: theme.colors.onSurfaceVariant },
     textSecondary: { color: theme.colors.onSurfaceDisabled || theme.colors.outline },
     iconColor: theme.colors.onSurfaceVariant
+  };
+
+  const handleProtectedNavigation = (screen: string) => {
+    if (signed) {
+      navigation.navigate(screen);
+    } else {
+      navigation.navigate("Login");
+    }
   };
 
   return (
@@ -164,12 +172,16 @@ function CustomDrawerContent(props: DrawerContentComponentProps) {
         {user?.avatar ? (
           <Avatar.Image size={40} source={{ uri: user.avatar }} style={{ backgroundColor: theme.colors.primary }} />
         ) : (
-          <Avatar.Text size={40} label={user?.name?.charAt(0) || "U"} style={{ backgroundColor: theme.colors.primary }} />
+          <Avatar.Text size={40} label={user?.name?.charAt(0) || "V"} style={{ backgroundColor: theme.colors.primary }} />
         )}
 
-        <TouchableOpacity style={{ marginLeft: 12, flex: 1 }} onPress={() => navigation.navigate("Profile")}>
-          <Text style={{ color: theme.colors.onSurface, fontWeight: 'bold', fontSize: 14 }}>{user?.name || "Visitante"}</Text>
-          <Text style={{ color: styles.textSecondary.color, fontSize: 12 }}>@{user?.username || "usuario"}</Text>
+        <TouchableOpacity style={{ marginLeft: 12, flex: 1 }} onPress={() => handleProtectedNavigation("Profile")}>
+          <Text style={{ color: theme.colors.onSurface, fontWeight: 'bold', fontSize: 14 }}>
+            {user?.name || "Visitante"}
+          </Text>
+          <Text style={{ color: styles.textSecondary.color, fontSize: 12 }}>
+            {user?.username ? `@${user.username}` : "Toque para entrar"}
+          </Text>
         </TouchableOpacity>
       </View>
 
@@ -188,9 +200,13 @@ function CustomDrawerContent(props: DrawerContentComponentProps) {
           onPress={() => navigation.navigate("MoviesCatalog")}
         />
         <CustomDrawerItem label="Séries" icon="television" onPress={() => navigation.navigate("MainTabs", { screen: "Séries" })} />
-        <CustomDrawerItem label="Listas" icon="playlist-check" onPress={() => navigation.navigate("Lists")} />
+
+        <CustomDrawerItem label="Listas" icon="playlist-check" onPress={() => handleProtectedNavigation("Lists")} />
+
         <CustomDrawerItem label="Pessoas" icon="account-group-outline" onPress={() => navigation.navigate("PeopleList")} />
+
         <Divider />
+        {/* Itens 'Em breve' mantidos... */}
         <CustomDrawerItem label="Jogos" icon="controller" isComingSoon />
         <CustomDrawerItem label="Música" icon="music-note-eighth" isComingSoon />
         <CustomDrawerItem label="Livros" icon="book-open-page-variant" isComingSoon />
@@ -199,24 +215,44 @@ function CustomDrawerContent(props: DrawerContentComponentProps) {
         <CustomDrawerItem label="Comunidade" icon="account-voice" isComingSoon />
         <CustomDrawerItem label="Prêmios" icon="medal-outline" isComingSoon />
         <Divider />
-        <CustomDrawerItem label="Perfil" icon="account-outline" onPress={() => navigation.navigate("Profile")} />
-        <CustomDrawerItem label="Configurações" icon="cog-outline" onPress={() => navigation.navigate("Settings")} />
+
+        <CustomDrawerItem label="Perfil" icon="account-outline" onPress={() => handleProtectedNavigation("Profile")} />
+        <CustomDrawerItem label="Configurações" icon="cog-outline" onPress={() => handleProtectedNavigation("Settings")} />
+
         <View style={{ marginTop: 20, paddingHorizontal: 16, paddingBottom: 20 + insets.bottom }}>
-          <TouchableOpacity
-            style={{
-              flexDirection: 'row',
-              alignItems: 'center',
-              padding: 12,
-              borderWidth: 1,
-              borderRadius: 8,
-              backgroundColor: styles.card.backgroundColor,
-              borderColor: styles.card.borderColor
-            }}
-            onPress={signOut}
-          >
-            <Icon name="logout" size={20} color={theme.colors.error} />
-            <Text style={{ color: theme.colors.error, marginLeft: 12, fontWeight: '500' }}>Sair</Text>
-          </TouchableOpacity>
+          {signed ? (
+            <TouchableOpacity
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                padding: 12,
+                borderWidth: 1,
+                borderRadius: 8,
+                backgroundColor: styles.card.backgroundColor,
+                borderColor: styles.card.borderColor
+              }}
+              onPress={signOut}
+            >
+              <Icon name="logout" size={20} color={theme.colors.error} />
+              <Text style={{ color: theme.colors.error, marginLeft: 12, fontWeight: '500' }}>Sair</Text>
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                padding: 12,
+                borderWidth: 1,
+                borderRadius: 8,
+                backgroundColor: styles.card.backgroundColor,
+                borderColor: theme.colors.primary // Destaque para entrar
+              }}
+              onPress={() => navigation.navigate("Login")}
+            >
+              <Icon name="login" size={20} color={theme.colors.primary} />
+              <Text style={{ color: theme.colors.primary, marginLeft: 12, fontWeight: '500' }}>Entrar</Text>
+            </TouchableOpacity>
+          )}
         </View>
 
       </ScrollView>

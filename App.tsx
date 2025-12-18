@@ -83,18 +83,10 @@ const navThemeDark = {
 
 const Stack = createNativeStackNavigator();
 
-function AuthStack() {
-  return (
-    <Stack.Navigator screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="Login" component={LoginScreen} />
-      <Stack.Screen name="Register" component={RegisterScreen} />
-      <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
-      <Stack.Screen name="ResetPassword" component={ResetPasswordScreen} />
-    </Stack.Navigator>
-  );
-}
 
 function AppStack({ theme }: { theme: any }) {
+  const { signed } = useContext(AuthContext);
+
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen
@@ -102,7 +94,48 @@ function AppStack({ theme }: { theme: any }) {
         component={SplashScreen}
         options={{ headerShown: false }}
       />
+
       <Stack.Screen name="Home" component={HomeScreen} />
+
+      <Stack.Screen
+        name="MediaDetails"
+        component={MediaDetailsScreen}
+        options={{
+          headerShown: true,
+          title: "",
+          headerTransparent: true,
+          headerTintColor: '#fff',
+        }}
+      />
+      <Stack.Screen
+        name="PersonDetails"
+        component={PersonDetailsScreen}
+        options={{ title: "Detalhes", headerTransparent: true, headerTintColor: '#fff' }}
+      />
+      <Stack.Screen
+        name="ListDetails"
+        component={ListDetailsScreen}
+        options={{
+          headerShown: true,
+          title: "Detalhes da Lista",
+          headerStyle: { backgroundColor: theme.colors.card },
+          headerTintColor: theme.colors.text
+        }}
+      />
+      <Stack.Screen
+        name="EpisodeDetails"
+        component={EpisodeDetailsScreen}
+        options={{
+          headerShown: false,
+          animation: 'slide_from_right'
+        }}
+      />
+
+      <Stack.Screen name="Login" component={LoginScreen} />
+      <Stack.Screen name="Register" component={RegisterScreen} />
+      <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
+      <Stack.Screen name="ResetPassword" component={ResetPasswordScreen} />
+
       <Stack.Screen
         name="Profile"
         component={ProfileScreen}
@@ -124,21 +157,6 @@ function AppStack({ theme }: { theme: any }) {
         }}
       />
       <Stack.Screen
-        name="MediaDetails"
-        component={MediaDetailsScreen}
-        options={{
-          headerShown: true,
-          title: "",
-          headerTransparent: true,
-          headerTintColor: '#fff',
-        }}
-      />
-      <Stack.Screen
-        name="PersonDetails"
-        component={PersonDetailsScreen}
-        options={{ title: "Detalhes", headerTransparent: true, headerTintColor: '#fff' }} // Ajuste conforme preferência visual
-      />
-      <Stack.Screen
         name="Lists"
         component={ListsScreen}
         options={{
@@ -148,30 +166,12 @@ function AppStack({ theme }: { theme: any }) {
           headerTintColor: theme.colors.text
         }}
       />
-      <Stack.Screen
-        name="ListDetails"
-        component={ListDetailsScreen}
-        options={{
-          headerShown: true,
-          title: "Detalhes da Lista",
-          headerStyle: { backgroundColor: theme.colors.card },
-          headerTintColor: theme.colors.text
-        }}
-      />
-      <Stack.Screen
-        name="EpisodeDetails"
-        component={EpisodeDetailsScreen}
-        options={{
-          headerShown: false,
-          animation: 'slide_from_right'
-        }}
-      />
     </Stack.Navigator>
   );
 }
 
 function NavigationRoot() {
-  const { signed, loading } = useContext(AuthContext);
+  const { loading } = useContext(AuthContext);
   const { isDark } = useContext(ThemeContext);
   const navTheme = isDark ? navThemeDark : navThemeLight;
 
@@ -179,7 +179,7 @@ function NavigationRoot() {
 
   return (
     <NavigationContainer theme={navTheme}>
-      {signed ? <AppStack theme={navTheme} /> : <AuthStack />}
+      <AppStack theme={navTheme} />
     </NavigationContainer>
   );
 }
