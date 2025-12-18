@@ -24,7 +24,37 @@ export function getMediaYear(media: any): string | undefined {
   if (media.episode_air_date) {
     return media.episode_air_date?.slice(0, 4);
   }
-  return undefined;
+  if (media.air_date) {
+    return media.air_date?.slice(0, 4);
+  }
+  return '';
+}
+
+export function getMediaImageUrl(posterPath: any, size = "w500"): string {
+  if (!posterPath) {
+    return "/placeholder.svg?height=750&width=500&text=No+Image"
+  }
+
+  try {
+    const provider = Object.keys(posterPath)[0]
+    const path = posterPath[provider]
+
+    if (!path) {
+      return "/placeholder.svg?height=750&width=500&text=No+Image"
+    }
+
+    if (provider === "tmdb") {
+      return `https://image.tmdb.org/t/p/${size}${path}`
+    }
+
+    if (provider === "igdb") {
+      return `https://images.igdb.com/igdb/image/upload/${size}${path}`
+    }
+
+    return path
+  } catch {
+    return "/placeholder.svg?height=750&width=500&text=No+Image"
+  }
 }
 
 export const formatCurrency = (value?: string) => {

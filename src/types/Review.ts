@@ -32,6 +32,14 @@ export interface FeedbackCounts {
   total: number;
 }
 
+export interface ReviewEpisode {
+  id: number;
+  name: string;
+  season_number: number;
+  episode_number: number;
+  still_path?: string | null;
+}
+
 export interface Review {
   review_id: string;
   user: UserInfo;
@@ -50,4 +58,6 @@ export interface Review {
   
   feedback_counts: FeedbackCounts;
   user_feedback: 'useful' | 'not_useful' | 'report' | null;
+
+  episode?: ReviewEpisode;
 }

@@ -29,10 +29,10 @@ export default function ReviewCard({ review, onDelete, onShare }: Props) {
   };
 
   const getRatingColor = (rating: number) => {
-    if (rating >= 4.5) return "#16a34a"; // green
-    if (rating >= 3.5) return "#ca8a04"; // yellow
-    if (rating >= 2.5) return "#ea580c"; // orange
-    return "#dc2626"; // red
+    if (rating >= 4.5) return "#16a34a";
+    if (rating >= 3.5) return "#ca8a04";
+    if (rating >= 2.5) return "#ea580c";
+    return "#dc2626";
   };
 
   const renderStars = (rating: number) => (
@@ -65,7 +65,6 @@ export default function ReviewCard({ review, onDelete, onShare }: Props) {
     }
   };
 
-  // Prepara as categorias para exibição (filtra as que tem valor 0 ou null)
   const categories = [
     { label: "Roteiro", value: review.story_rating },
     { label: "Atuação", value: review.acting_rating },
@@ -80,10 +79,13 @@ export default function ReviewCard({ review, onDelete, onShare }: Props) {
   const userAvatar = review.user?.avatar;
   const userInitial = userName.charAt(0);
 
+  const episodeLabel = review.episode 
+    ? `S${review.episode.season_number.toString().padStart(2, '0')}E${review.episode.episode_number.toString().padStart(2, '0')} • ${review.episode.title}`
+    : null;
+
   return (
     <View style={[styles.container, { backgroundColor: theme.colors.surface, borderColor: theme.colors.outlineVariant }]}>
 
-      {/* HEADER: Avatar, Nome, Data, Nota */}
       <View style={styles.header}>
         {userAvatar ? (
           <Avatar.Image size={42} source={{ uri: userAvatar }} />
@@ -94,6 +96,20 @@ export default function ReviewCard({ review, onDelete, onShare }: Props) {
         <View style={styles.headerInfo}>
           <Text style={[styles.name, { color: theme.colors.onSurface }]}>{userName}</Text>
           <Text style={{ color: theme.colors.secondary, fontSize: 12 }}>{userHandle}</Text>
+          
+          {episodeLabel && (
+            <Text 
+              style={{ 
+                color: theme.colors.primary, 
+                fontSize: 11, 
+                fontWeight: 'bold', 
+                marginTop: 2 
+              }} 
+              numberOfLines={1}
+            >
+              {episodeLabel}
+            </Text>
+          )}
         </View>
 
         <View style={{ alignItems: 'flex-end' }}>
@@ -109,7 +125,6 @@ export default function ReviewCard({ review, onDelete, onShare }: Props) {
         </View>
       </View>
 
-      {/* AVALIAÇÕES DETALHADAS (GRID) */}
       {categories.length > 0 && (
         <View style={styles.categoriesContainer}>
           <Text style={{ fontSize: 12, color: theme.colors.secondary, marginBottom: 8 }}>Avaliações por categoria:</Text>
@@ -127,7 +142,6 @@ export default function ReviewCard({ review, onDelete, onShare }: Props) {
         </View>
       )}
 
-      {/* CONTEÚDO (SPOILER OU TEXTO) */}
       <View style={styles.content}>
         {review.has_spoilers && !showSpoiler ? (
           <View style={[styles.spoilerBox, { borderColor: '#f59e0b', backgroundColor: 'rgba(245, 158, 11, 0.1)' }]}>
@@ -181,10 +195,8 @@ export default function ReviewCard({ review, onDelete, onShare }: Props) {
         </View>
       )}
 
-      {/* DIVISOR */}
       <View style={[styles.divider, { backgroundColor: theme.colors.outlineVariant }]} />
 
-      {/* BOTÕES DE AÇÃO */}
       <View style={styles.footer}>
         {isOwner ? (
           <>
@@ -202,7 +214,6 @@ export default function ReviewCard({ review, onDelete, onShare }: Props) {
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', flex: 1 }}>
             <View style={{ flexDirection: 'row', gap: 10 }}>
 
-              {/* BOTÃO ÚTIL (ESTILO VERDE IGUAL PRINT) */}
               <TouchableOpacity
                 style={[
                   styles.feedbackBtn,
@@ -227,7 +238,6 @@ export default function ReviewCard({ review, onDelete, onShare }: Props) {
                 </Text>
               </TouchableOpacity>
 
-              {/* BOTÃO NÃO ÚTIL */}
               <TouchableOpacity
                 style={[
                   styles.feedbackBtn,
@@ -250,7 +260,6 @@ export default function ReviewCard({ review, onDelete, onShare }: Props) {
               </TouchableOpacity>
             </View>
 
-            {/* BOTÃO REPORTAR */}
             <TouchableOpacity
               style={[styles.feedbackBtn]}
               onPress={() => handleFeedback('report')}

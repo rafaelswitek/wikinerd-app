@@ -4,7 +4,7 @@ import { Text, ActivityIndicator, Chip, Divider, useTheme, Button, Menu } from "
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 
 import { useMediaDetails } from "../hooks/useMediaDetails";
-import { getCertificationColor, formatCurrency, getSocialData } from "../utils/helpers";
+import { getCertificationColor, formatCurrency, getSocialData, getMediaImageUrl, getMediaYear } from "../utils/helpers";
 import { Country, Language } from "../types/Movie";
 import { MediaImage } from "../types/Interactions";
 import { AuthContext } from "../context/AuthContext";
@@ -584,7 +584,14 @@ export default function MediaDetailsScreen({ route }: any) {
           seasons={isTv ? (media as any).seasons : []}
         />
       )}
-      {media && justCreatedReview && <ShareReviewModal visible={shareModalVisible} onDismiss={() => setShareModalVisible(false)} movie={media as any} review={justCreatedReview} />}
+      {media && justCreatedReview && <ShareReviewModal
+        visible={shareModalVisible}
+        onDismiss={() => setShareModalVisible(false)}
+        title={media.title}
+        subtitle={`Filme • ${getMediaYear(media)}` }
+        image={getMediaImageUrl(media.poster_path)}
+        review={justCreatedReview}
+      />}
     </>
   );
 }

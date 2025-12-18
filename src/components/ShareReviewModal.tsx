@@ -1,23 +1,23 @@
 import React, { useRef } from "react";
 import { View, StyleSheet, Image, Alert, ScrollView, Dimensions } from "react-native";
-import { Modal, Portal, Text, Button, useTheme, IconButton, Divider } from "react-native-paper";
+import { Modal, Portal, Text, Button, useTheme, IconButton } from "react-native-paper";
 import ViewShot from "react-native-view-shot";
 import * as Sharing from 'expo-sharing';
 import Icon from "react-native-vector-icons/MaterialCommunityIcons";
-import { Movie } from "../types/Movie";
 import { Review } from "../types/Review";
-import { getMediaYear } from "../utils/helpers";
 
 const { width } = Dimensions.get('window');
 
 interface Props {
   visible: boolean;
   onDismiss: () => void;
-  movie: Movie;
+  title: string;
+  subtitle: string;
+  image: string;
   review: Review;
 }
 
-export default function ShareReviewModal({ visible, onDismiss, movie, review }: Props) {
+export default function ShareReviewModal({ visible, onDismiss, title, subtitle, image, review }: Props) {
   const theme = useTheme();
   const viewShotRef = useRef<ViewShot>(null);
 
@@ -80,17 +80,14 @@ export default function ShareReviewModal({ visible, onDismiss, movie, review }: 
               {/* CARD DO VISUAL (Estilo Instagram Stories) */}
               <View style={styles.card}>
                 <View style={{ alignItems: 'center', marginBottom: 16 }}>
-                  <Text style={styles.movieTitle}>{movie.title}</Text>
-                  <Text style={styles.movieYear}>Filme • {getMediaYear(movie)}</Text>
+                  <Text style={styles.movieTitle}>{title}</Text>
+                  <Text style={styles.movieYear}>{subtitle}</Text>
                 </View>
 
-                {movie.poster_path?.tmdb && (
-                  <Image
-                    source={{ uri: `https://image.tmdb.org/t/p/w342${movie.poster_path.tmdb}` }}
-                    style={styles.poster}
-                  />
-                )}
-
+                <Image
+                  source={{ uri: image }}
+                  style={styles.poster}
+                />
                 <View style={{ flexDirection: 'row', marginTop: 12, marginBottom: 4 }}>
                   {[1, 2, 3, 4, 5].map(i => <Icon key={i} name={i <= review.overall_rating ? "star" : "star-outline"} size={24} color="#eab308" />)}
                 </View>

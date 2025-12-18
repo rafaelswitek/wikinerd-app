@@ -5,7 +5,7 @@ import { useNavigation, useRoute } from "@react-navigation/native";
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 
 import { useEpisodeDetails } from "../hooks/useEpisodeDetails";
-import { formatDate, getRatings } from "../utils/helpers"; // Importando getRatings
+import { formatDate, getMediaImageUrl, getMediaYear, getRatings } from "../utils/helpers"; // Importando getRatings
 import { AuthContext } from "../context/AuthContext";
 import { api } from "../services/api";
 
@@ -499,7 +499,14 @@ export default function EpisodeDetailsScreen() {
         mediaType="episode" // Tipo episode esconde os seletores no Modal
       />}
       
-      {episode && justCreatedReview && <ShareReviewModal visible={shareModalVisible} onDismiss={() => setShareModalVisible(false)} movie={episode as any} review={justCreatedReview} />}
+      {episode && justCreatedReview && <ShareReviewModal
+        visible={shareModalVisible}
+        onDismiss={() => setShareModalVisible(false)}
+        title={`${episode.title}`}
+        subtitle={`S${episode.season_number}E${episode.episode_number} • ${getMediaYear(episode)}` }
+        image={getMediaImageUrl(episode.still_path)}
+        review={justCreatedReview}
+      />}
 
     </>
   );
