@@ -143,26 +143,8 @@ export default function MoviesScreen() {
         styles.header,
         {
           backgroundColor: theme.colors.surface,
-          paddingTop: insets.top + 10
         }
       ]}>
-        <View style={styles.headerTop}>
-          <Button icon="menu" textColor={theme.colors.onSurface} onPress={() => navigation.dispatch(DrawerActions.openDrawer())} compact>
-            Menu
-          </Button>
-          <View style={styles.headerTitleContainer}>
-            <Icon name="filmstrip" size={24} color={theme.colors.primary} style={{ marginRight: 8 }} />
-            <Text variant="titleLarge" style={{ fontWeight: 'bold', color: theme.colors.onSurface }}>Filmes</Text>
-          </View>
-          {pagination && (
-            <View style={[styles.badge, { backgroundColor: theme.colors.surfaceVariant }]}>
-              <Text style={{ color: theme.colors.onSurfaceVariant, fontSize: 10, fontWeight: 'bold' }}>
-                {pagination.total.toLocaleString('pt-BR')} filmes
-              </Text>
-            </View>
-          )}
-        </View>
-
         <Searchbar
           placeholder="Buscar filmes..."
           onChangeText={setSearchTerm}
@@ -207,6 +189,16 @@ export default function MoviesScreen() {
             ))}
           </Menu>
         </View>
+      </View>
+
+      <View style={styles.headerTop}>,
+        {pagination && (
+          <View style={[styles.badge, { backgroundColor: theme.colors.surfaceVariant }]}>
+            <Text style={{ color: theme.colors.onSurfaceVariant, fontSize: 10, fontWeight: 'bold' }}>
+              {pagination.total.toLocaleString('pt-BR')} filmes
+            </Text>
+          </View>
+        )}
       </View>
 
       {loading ? (
@@ -254,7 +246,7 @@ export default function MoviesScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   header: { paddingHorizontal: 16, paddingBottom: 12, elevation: 4, zIndex: 1 },
-  headerTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 },
+  headerTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', margin: 12 },
   headerTitleContainer: { flexDirection: 'row', alignItems: 'center' },
   badge: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 12 },
   searchBar: { marginBottom: 12, height: 48, backgroundColor: 'rgba(255,255,255,0.1)' },

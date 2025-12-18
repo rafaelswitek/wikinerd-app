@@ -14,17 +14,23 @@ const sortOptions = [
   { label: "Falecimento", id: "deathday" },
 ];
 
+interface PaginationData {
+  current_page: number;
+  last_page: number;
+  total: number;
+}
+
 export default function PeopleScreen() {
   const theme = useTheme();
   const navigation = useNavigation<any>();
   const insets = useSafeAreaInsets();
 
   const [people, setPeople] = useState<Person[]>([]);
+  const [pagination, setPagination] = useState<PaginationData | null>(null);
   const [loading, setLoading] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
 
   const [page, setPage] = useState(1);
-  const [hasMore, setHasMore] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [debouncedTerm, setDebouncedTerm] = useState("");
 
@@ -70,7 +76,11 @@ export default function PeopleScreen() {
         setPeople(prev => [...prev, ...newData]);
       }
 
-      setHasMore(response.data.current_page < response.data.last_page);
+      setPagination({
+        current_page: response.data.current_page,
+        last_page: response.data.last_page,
+        total: response.data.total
+      });
 
     } catch (error) {
       console.error("Erro ao buscar pessoas:", error);
@@ -80,8 +90,8 @@ export default function PeopleScreen() {
     }
   };
 
-  const handleLoadMore = () => {
-    if (!loadingMore && hasMore && !loading) {
+  const loadMore = () => {
+    if (!loadingMore && pagination && page < pagination.last_page) {
       setPage(prev => prev + 1);
     }
   };
@@ -127,18 +137,13 @@ export default function PeopleScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
-      <View style={[styles.header, { backgroundColor: theme.colors.surface, paddingTop: insets.top + 10 }]}>
-        <View style={styles.headerTop}>
-          <Button icon="menu" textColor={theme.colors.onSurface} onPress={() => navigation.dispatch(DrawerActions.openDrawer())} compact>
-            Menu
-          </Button>
-          <View style={styles.headerTitleContainer}>
-            <Icon name="account-group" size={24} color={theme.colors.primary} style={{ marginRight: 8 }} />
-            <Text variant="titleLarge" style={{ fontWeight: 'bold', color: theme.colors.onSurface }}>Pessoas</Text>
-          </View>
-          <View style={{ width: 60 }} />
-        </View>
 
+      <View style={[
+        styles.header,
+        {
+          backgroundColor: theme.colors.surface,
+        }
+      ]}>
         <Searchbar
           placeholder="Buscar pessoas..."
           onChangeText={setSearchTerm}
@@ -178,6 +183,16 @@ export default function PeopleScreen() {
 
       </View>
 
+      <View style={styles.headerTop}>,
+        {pagination && (
+          <View style={[styles.badge, { backgroundColor: theme.colors.surfaceVariant }]}>
+            <Text style={{ color: theme.colors.onSurfaceVariant, fontSize: 10, fontWeight: 'bold' }}>
+              {pagination.total.toLocaleString('pt-BR')} pessoas
+            </Text>
+          </View>
+        )}
+      </View>
+
       {loading && page === 1 ? (
         <View style={styles.center}>
           <ActivityIndicator size="large" color={theme.colors.primary} />
@@ -189,7 +204,7 @@ export default function PeopleScreen() {
           renderItem={renderPersonCard}
           numColumns={3}
           contentContainerStyle={styles.listContent}
-          onEndReached={handleLoadMore}
+          onEndReached={loadMore}
           onEndReachedThreshold={0.5}
           ListFooterComponent={loadingMore ? <ActivityIndicator style={{ margin: 20 }} /> : null}
           ListEmptyComponent={
@@ -206,8 +221,9 @@ export default function PeopleScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   header: { paddingHorizontal: 16, paddingBottom: 12, elevation: 4, zIndex: 1 },
-  headerTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 },
+  headerTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', margin: 12 },
   headerTitleContainer: { flexDirection: 'row', alignItems: 'center' },
+  badge: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 12 },
   searchBar: { height: 48, backgroundColor: 'rgba(255,255,255,0.1)', marginBottom: 12 },
 
   controlsRow: { flexDirection: 'row' },

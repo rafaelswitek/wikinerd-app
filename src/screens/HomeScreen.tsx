@@ -277,12 +277,19 @@ export default function HomeScreen() {
       <Drawer.Screen
         name="MoviesCatalog"
         component={MoviesScreen}
+        options={{ 
+          headerShown: true,
+          title: "Filmes",
+        }}
       />
 
       <Drawer.Screen
         name="PeopleList"
         component={PeopleScreen}
-        options={{ headerShown: false }}
+        options={{ 
+          headerShown: true,
+          title: "Pessoas",
+        }}
       />
     </Drawer.Navigator>
   );
